@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from eo_fetch.backends import get_backend
-from eo_fetch.backends.eumetsat import EumetsatBackend, bbox_to_wkt
+from eo_fetch.backends.eumetsat import EumetsatBackend, bbox_to_wkt, kib_to_bytes
 from eo_fetch.cli import main
 from eo_fetch.download import download_items
 from eo_fetch.models import Query
@@ -16,7 +16,7 @@ from eo_fetch.providers import get_provider
 
 class FakeProduct:
     def __init__(self, ident: str, sensing: datetime, payload: bytes = b"zipdata") -> None:
-        self.ident, self.sensing_start, self.payload, self.size = ident, sensing, payload, 1
+        self.ident, self.sensing_start, self.payload, self.size = ident, sensing, payload, 182847
 
     def __str__(self) -> str:
         return self.ident
@@ -87,11 +87,30 @@ def test_search_sorts_converts_time_and_passes_arguments(backend: EumetsatBacken
     assert arguments["geo"].startswith("POLYGON((")
 
 
-def test_search_limit_and_missing_product(backend: EumetsatBackend):
-    query = Query(provider="eumetsat", product="EO:EUM:DAT:MSG:HRSEVIRI", limit=2)
-    assert len(backend.search(query)) == 2
+def test_limit_keeps_earliest_with_a_time_range_and_newest_without(backend: EumetsatBackend):
+    # the fake answers in the order B, A, C (not sorted); the real service answers newest first
+    bounded = Query(
+        provider="eumetsat",
+        product="EO:EUM:DAT:MSG:HRSEVIRI",
+        start=datetime(2026, 9, 1, tzinfo=UTC),
+        limit=2,
+    )
+    assert [item.key for item in backend.search(bounded)] == ["A", "B"]
+    open_ended = Query(provider="eumetsat", product="EO:EUM:DAT:MSG:HRSEVIRI", limit=2)
+    assert [item.key for item in backend.search(open_ended)] == ["A", "B"]
+
+
+def test_missing_product_is_an_error(backend: EumetsatBackend):
     with pytest.raises(ValueError, match="collection id"):
         backend.search(Query(provider="eumetsat"))
+
+
+def test_size_hint_is_kibibytes_and_not_used_for_verification(backend: EumetsatBackend):
+    items = backend.search(Query(provider="eumetsat", product="EO:EUM:DAT:MSG:HRSEVIRI"))
+    assert items[0].size is None
+    assert items[0].size_hint == 182847 * 1024
+    assert items[0].expected_size == 182847 * 1024
+    assert kib_to_bytes("not a number") is None
 
 
 def test_collections_filter_by_text(backend: EumetsatBackend):

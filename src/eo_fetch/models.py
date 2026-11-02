@@ -28,7 +28,9 @@ class Query:
 class Item:
     """One downloadable object (a file, a granule, a product).
 
-    ``checksum`` is ``"sha256:<hex>"`` or ``"md5:<hex>"`` when the provider publishes one.
+    ``size`` is the exact size in bytes when the provider publishes it; downloads are checked
+    against it. ``size_hint`` is an approximate size (for example rounded to kibibytes), used
+    only to show totals. ``checksum`` is ``"sha256:<hex>"`` or ``"md5:<hex>"`` when published.
     ``meta`` holds provider-specific details that a backend needs again at fetch time.
     """
 
@@ -40,6 +42,12 @@ class Item:
     url: str | None = None
     checksum: str | None = None
     meta: Mapping[str, str] = field(default_factory=dict)
+    size_hint: int | None = None
+
+    @property
+    def expected_size(self) -> int | None:
+        """The exact size if known, else the approximate one (for display only)."""
+        return self.size if self.size is not None else self.size_hint
 
     @property
     def filename(self) -> str:

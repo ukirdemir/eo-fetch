@@ -9,11 +9,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from eo_fetch import __version__
-from eo_fetch.backends import get_backend
+from eo_fetch.backends import get_backend, param_names
 from eo_fetch.download import Result, download_items
 from eo_fetch.manifest import build_manifest, verify_manifest, write_manifest
 from eo_fetch.models import Item, Query
-from eo_fetch.providers import all_providers, get_provider
+from eo_fetch.providers import ProviderInfo, all_providers, get_provider
 
 
 def parse_time(text: str) -> datetime:
@@ -44,11 +44,24 @@ def add_query_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
 
 
+def build_backend(info: ProviderInfo, user_params: dict[str, str]):
+    """Create the provider's backend, rejecting --param names it does not know."""
+    constructor, search = param_names(info.backend)
+    unknown = set(user_params) - constructor - search
+    if unknown:
+        accepted = ", ".join(sorted(constructor | search)) or "none"
+        raise SystemExit(
+            f"Unknown --param {', '.join(sorted(unknown))} for provider {info.name} "
+            f"(accepted: {accepted})"
+        )
+    return get_backend(info.backend, {**info.backend_params, **user_params})
+
+
 def resolve(args: argparse.Namespace):
     """Return the provider info, the backend and the query for the parsed arguments."""
     info = get_provider(args.provider)
     user_params = parse_params(args.param)
-    backend = get_backend(info.backend, {**info.backend_params, **user_params})
+    backend = build_backend(info, user_params)
     product = info.products.get(args.product, args.product)
     query = Query(
         provider=info.name,
@@ -65,8 +78,14 @@ def resolve(args: argparse.Namespace):
 
 def describe(item: Item) -> str:
     when = item.time.strftime("%Y-%m-%d %H:%M") if item.time else "-"
-    size = f"{item.size / 1e6:.1f} MB" if item.size is not None else "? MB"
+    expected = item.expected_size
+    size = f"{expected / 1e6:.1f} MB" if expected is not None else "? MB"
     return f"{when}  {size:>10}  {item.key}"
+
+
+def total_megabytes(items: Sequence[Item]) -> float:
+    """Sum of the known or approximate sizes in megabytes (unknown sizes count as 0)."""
+    return sum(item.expected_size or 0 for item in items) / 1e6
 
 
 def cmd_providers(args: argparse.Namespace) -> int:
@@ -82,16 +101,22 @@ def cmd_search(args: argparse.Namespace) -> int:
     items = backend.search(query)
     for item in items:
         print(describe(item))
-    total = sum(item.size or 0 for item in items)
-    print(f"{len(items)} items, {total / 1e6:.1f} MB (sizes unknown for some items count as 0)")
+    unknown = sum(item.expected_size is None for item in items)
+    note = f" ({unknown} of unknown size)" if unknown else ""
+    print(f"{len(items)} items, {total_megabytes(items):.1f} MB{note}")
+    folders = getattr(backend, "folders_seen", [])
+    if not items and folders:
+        shown = ", ".join(name.rsplit("/", 1)[-1] for name in folders[:12])
+        more = " ..." if len(folders) > 12 else ""
+        print(f"No files here, but {len(folders)} subfolders: {shown}{more}")
+        print("Give one with --param prefix=..., or look deeper with --param depth=2")
     return 0
 
 
 def cmd_download(args: argparse.Namespace) -> int:
     info, backend, query = resolve(args)
     items = backend.search(query)
-    total = sum(item.size or 0 for item in items)
-    print(f"{len(items)} items, {total / 1e6:.1f} MB")
+    print(f"{len(items)} items, {total_megabytes(items):.1f} MB")
     if args.dry_run or not items:
         return 0
 
@@ -119,7 +144,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     info = get_provider(args.provider)
-    backend = get_backend(info.backend, {**info.backend_params, **parse_params(args.param)})
+    backend = build_backend(info, parse_params(args.param))
     print(f"{info.name}: {info.title}")
     print(f"  access: {info.auth}; latency: {info.latency or 'not stated'}")
     print(f"  licence: {info.licence or 'not stated'}")
@@ -133,7 +158,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 def cmd_collections(args: argparse.Namespace) -> int:
     info = get_provider(args.provider)
-    backend = get_backend(info.backend, {**info.backend_params, **parse_params(args.param)})
+    backend = build_backend(info, parse_params(args.param))
     lister = getattr(backend, "collections", None)
     if lister is None:
         print(f"The {info.backend} backend has no collection listing.")
@@ -148,6 +173,7 @@ def cmd_collections(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="eo-fetch", description=__doc__)
     parser.add_argument("--version", action="version", version=f"eo-fetch {__version__}")
+    parser.add_argument("--debug", action="store_true", help="show full tracebacks on errors")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("providers", help="list registered providers").set_defaults(run=cmd_providers)
@@ -193,6 +219,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except KeyError as error:
         print(error.args[0], file=sys.stderr)
         return 2
+    except (ValueError, RuntimeError, OSError) as error:
+        if args.debug:
+            raise
+        print(f"error: {error}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

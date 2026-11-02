@@ -37,6 +37,6 @@ register(
             "cmsaf-sarah3": "EO:EUM:DAT:0863",
             "cmsaf-girafe-rainfall": "EO:EUM:DAT:0921",
         },
-        verified="",
+        verified="2026-11-02",
     )
 )

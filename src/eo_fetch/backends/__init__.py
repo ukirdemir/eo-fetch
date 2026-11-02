@@ -2,27 +2,49 @@
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable, Mapping
 
 from eo_fetch.backends.base import Backend
 from eo_fetch.backends.eumetsat import EumetsatBackend
 from eo_fetch.backends.local import LocalBackend
+from eo_fetch.backends.s3 import S3Backend
 
 # Backends import their third-party library only when first used, so listing is always cheap.
 BACKENDS: dict[str, Callable[..., Backend]] = {
     "local": LocalBackend,
     "eumetsat": EumetsatBackend,
+    "s3": S3Backend,
 }
 
 
-def get_backend(name: str, params: Mapping[str, str] | None = None) -> Backend:
-    """Build a backend by name; ``params`` are passed as keyword arguments."""
+def backend_factory(name: str) -> Callable[..., Backend]:
     try:
-        factory = BACKENDS[name]
+        return BACKENDS[name]
     except KeyError:
         known = ", ".join(sorted(BACKENDS))
         raise KeyError(f"Unknown backend {name!r}. Available: {known}") from None
-    return factory(**dict(params or {}))
 
 
-__all__ = ["BACKENDS", "Backend", "EumetsatBackend", "LocalBackend", "get_backend"]
+def param_names(name: str) -> tuple[set[str], set[str]]:
+    """Return (constructor parameters, search parameters) a backend accepts."""
+    factory = backend_factory(name)
+    return set(inspect.signature(factory).parameters), set(getattr(factory, "query_params", ()))
+
+
+def get_backend(name: str, params: Mapping[str, str] | None = None) -> Backend:
+    """Build a backend by name; only the parameters its constructor accepts are passed on."""
+    accepted, _ = param_names(name)
+    return backend_factory(name)(**{k: v for k, v in (params or {}).items() if k in accepted})
+
+
+__all__ = [
+    "BACKENDS",
+    "Backend",
+    "EumetsatBackend",
+    "LocalBackend",
+    "S3Backend",
+    "backend_factory",
+    "get_backend",
+    "param_names",
+]

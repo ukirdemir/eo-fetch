@@ -178,6 +178,26 @@ def test_cli_providers_search_download_verify(tmp_path: Path, capsys):
     assert main(["verify", str(dest / "manifest.json"), "--root", str(dest)]) == 0
 
 
+def test_search_options_do_not_reach_the_backend_constructor():
+    from eo_fetch.cli import build_backend
+
+    info = get_provider("noaa")
+    backend = build_backend(info, {"prefix": "2026/09/15/KFWS/"})
+    assert backend.name == "s3"
+
+
+def test_unknown_param_is_rejected_with_the_accepted_names():
+    from eo_fetch.cli import build_backend
+
+    with pytest.raises(SystemExit) as error:
+        build_backend(get_provider("noaa"), {"prefx": "x"})
+    message = str(error.value)
+    assert "prefx" in message
+    assert "layout, prefix" in message
+    with pytest.raises(SystemExit):
+        build_backend(get_provider("local"), {"rooot": "x"})
+
+
 def test_cli_unknown_provider_is_a_clean_error(capsys):
     assert main(["search", "--provider", "nope"]) == 2
     assert "Unknown provider" in capsys.readouterr().err

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 from itertools import islice
 from pathlib import Path
 
@@ -18,6 +18,14 @@ def bbox_to_wkt(bbox: BBox) -> str:
     west, south, east, north = bbox
     ring = [(west, south), (east, south), (east, north), (west, north), (west, south)]
     return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
+
+
+def kib_to_bytes(size_kib) -> int | None:
+    """Convert the Data Store's product size (kibibytes, rounded) to approximate bytes."""
+    try:
+        return int(size_kib) * 1024
+    except (TypeError, ValueError):
+        return None
 
 
 def load_credentials() -> tuple[str, str]:
@@ -84,17 +92,24 @@ class EumetsatBackend:
             arguments["geo"] = bbox_to_wkt(query.bbox)
         collection = self.datastore().get_collection(query.product)
         products = collection.search(**arguments)
+        # The service answers newest first. With a time range the whole answer is listed and
+        # sorted, so a limit keeps the earliest products. Without a range, a limit keeps the
+        # newest ones (listing a whole archive just to cut it would be wasteful).
+        bounded = query.start is not None or query.end is not None
+        if not bounded:
+            products = islice(products, query.limit)
         items = [
             Item(
                 provider=query.provider,
                 product=query.product,
                 key=str(product),
                 time=product.sensing_start.replace(tzinfo=UTC),
-                meta={"size_kb": str(getattr(product, "size", ""))},
+                size_hint=kib_to_bytes(getattr(product, "size", None)),
             )
-            for product in islice(products, query.limit)
+            for product in products
         ]
-        return sorted(items, key=lambda item: (item.time, item.key))
+        items.sort(key=lambda item: (item.time, item.key))
+        return items[: query.limit] if query.limit else items
 
     def fetch(self, item: Item, target: Path) -> None:
         product = self.datastore().get_product(product_id=item.key, collection_id=item.product)
@@ -113,21 +128,29 @@ class EumetsatBackend:
             print(f"  credentials: FAILED ({type(error).__name__}: {error})")
             return False
         ok = True
+        older = datetime.now(UTC) - timedelta(days=2)
+        probes = (("newest product", {}), ("product older than 2 days", {"dtend": older}))
         for ident in collection_ids:
-            try:
-                product = next(iter(store.get_collection(ident).search()))
-                response = requests.get(
-                    product.url,
-                    headers={"Authorization": f"Bearer {self._token}", "Range": PROBE_BYTES},
-                    timeout=60,
-                )
-            except Exception as error:
-                print(f"  {ident}: FAILED ({type(error).__name__}: {error})")
-                ok = False
-                continue
-            if response.status_code in (200, 206):
-                print(f"  {ident}: download allowed (HTTP {response.status_code})")
-            else:
-                ok = False
-                print(f"  {ident}: HTTP {response.status_code}: {response.text[:300]}")
+            collection = store.get_collection(ident)
+            for label, arguments in probes:
+                try:
+                    product = next(iter(collection.search(**arguments)), None)
+                    if product is None:
+                        print(f"  {ident}, {label}: none found")
+                        continue
+                    response = requests.get(
+                        product.url,
+                        headers={"Authorization": f"Bearer {self._token}", "Range": PROBE_BYTES},
+                        timeout=60,
+                    )
+                except Exception as error:
+                    print(f"  {ident}, {label}: FAILED ({type(error).__name__}: {error})")
+                    ok = False
+                    continue
+                if response.status_code in (200, 206):
+                    print(f"  {ident}, {label}: download allowed (HTTP {response.status_code})")
+                else:
+                    ok = False
+                    text = response.text[:300]
+                    print(f"  {ident}, {label}: HTTP {response.status_code}: {text}")
         return ok

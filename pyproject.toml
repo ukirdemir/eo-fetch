@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eo-fetch"
+version = "0.1.0"
+description = "One search-and-download interface, with manifests, for Earth-observation and climate data providers."
+requires-python = ">=3.12"
+dependencies = [
+    "requests",
+    "truststore",
+]
+
+[project.optional-dependencies]
+eumetsat = ["eumdac"]
+nasa = ["earthaccess"]
+stac = ["pystac-client"]
+noaa = ["herbie-data", "s3fs"]
+dwd = ["wetterdienst"]
+earthkit = ["earthkit-data", "earthkit-plots"]
+marine = ["copernicusmarine"]
+esgf = ["esgpull"]
+cds = ["cdsapi"]
+all = [
+    "eo-fetch[eumetsat,nasa,stac,noaa,dwd,earthkit,marine,esgf,cds]",
+]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+eo-fetch = "eo_fetch.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "network: needs internet access",
+    "account: needs provider credentials",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF", "ISC"]

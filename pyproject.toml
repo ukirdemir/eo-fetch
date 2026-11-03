@@ -19,11 +19,13 @@ stac = ["pystac-client"]
 noaa = ["herbie-data", "s3fs"]
 dwd = ["wetterdienst"]
 earthkit = ["earthkit-data", "earthkit-plots"]
+readers = ["numpy", "xarray", "netcdf4", "h5netcdf", "h5py", "zarr", "rioxarray", "pyproj", "pyresample"]
+satellite = ["eo-fetch[readers]", "satpy", "eccodes"]
 marine = ["copernicusmarine"]
 esgf = ["esgpull"]
 cds = ["cdsapi"]
 all = [
-    "eo-fetch[eumetsat,nasa,stac,noaa,dwd,earthkit,marine,esgf,cds]",
+    "eo-fetch[eumetsat,nasa,stac,noaa,dwd,earthkit,marine,esgf,cds,readers,satellite]",
 ]
 dev = ["pytest", "ruff"]
 

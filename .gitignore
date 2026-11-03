@@ -6,4 +6,8 @@ __pycache__/
 data/
 downloads/
 spike_plots/
+check_readers/
+plots/
+*.unpacked/
+.unpacked/
 *.part

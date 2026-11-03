@@ -170,6 +170,47 @@ def cmd_collections(args: argparse.Namespace) -> int:
     return 0
 
 
+def parse_options(pairs: Sequence[str]) -> dict[str, object]:
+    """Reader options from ``key=value``; numbers are converted, ``a,b`` stays a string."""
+    options: dict[str, object] = {}
+    for key, value in parse_params(pairs).items():
+        if key == "area_extent":
+            options[key] = tuple(float(part) for part in value.split(","))
+            continue
+        try:
+            options[key] = float(value)
+        except ValueError:
+            options[key] = value
+    return options
+
+
+def cmd_open(args: argparse.Namespace) -> int:
+    from eo_fetch.readers import open_data, resolve, summarize
+
+    format_name = args.format or "+".join(sorted({name for name, _ in resolve(args.path)}))
+    dataset = open_data(args.path, format=args.format, **parse_options(args.option))
+    print(f"{args.path.name}: format {format_name}")
+    print(summarize(dataset))
+    return 0
+
+
+def cmd_check_readers(args: argparse.Namespace) -> int:
+    from eo_fetch import checkreaders
+
+    def make(info: ProviderInfo):
+        return build_backend(info, {})
+
+    def show(row: checkreaders.Row) -> None:
+        print(f"{row.status:10} {row.provider}/{row.product:32} {row.format:8} {row.detail}")
+
+    rows = checkreaders.run(
+        make, args.dest, args.only, days=args.days, max_mb=args.max_mb, on_row=show
+    )
+    counts = {s: sum(r.status == s for r in rows) for s in ("ok", "no reader", "fail", "skip")}
+    print(", ".join(f"{count} {status}" for status, count in counts.items()))
+    return 1 if counts["fail"] else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="eo-fetch", description=__doc__)
     parser.add_argument("--version", action="version", version=f"eo-fetch {__version__}")
@@ -209,6 +250,23 @@ def build_parser() -> argparse.ArgumentParser:
     collections.add_argument("--text", default="", help="only collections containing this text")
     collections.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
     collections.set_defaults(run=cmd_collections)
+
+    open_cmd = sub.add_parser("open", help="open a downloaded file and describe its contents")
+    open_cmd.add_argument("path", type=Path)
+    open_cmd.add_argument("--format", help="override the detected format")
+    open_cmd.add_argument(
+        "--option", action="append", default=[], metavar="KEY=VALUE", help="reader option"
+    )
+    open_cmd.set_defaults(run=cmd_open)
+
+    check = sub.add_parser(
+        "check-readers", help="download the smallest recent file of each product and open it"
+    )
+    check.add_argument("--dest", type=Path, default=Path("check_readers"))
+    check.add_argument("--only", action="append", default=[], metavar="PROVIDER[/ALIAS]")
+    check.add_argument("--days", type=int, default=3, help="look at files of the last N days")
+    check.add_argument("--max-mb", type=float, default=300.0)
+    check.set_defaults(run=cmd_check_readers)
     return parser
 
 

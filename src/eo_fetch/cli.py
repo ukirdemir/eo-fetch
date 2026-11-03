@@ -153,7 +153,22 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         print("  no access diagnostics implemented for this backend yet")
         return 0
     chosen = tuple(info.products.get(c, c) for c in args.collection)
+    # an empty choice makes the backend use its own default probe collection
     return 0 if (check(chosen) if chosen else check()) else 1
+
+
+def cmd_login(args: argparse.Namespace) -> int:
+    info = get_provider(args.provider)
+    backend = build_backend(info, {})
+    login = getattr(backend, "login", None)
+    if login is None:
+        print(
+            f"{info.name} has no login step in eo-fetch. See `eo-fetch doctor --provider "
+            f"{info.name}` for how its credentials are found."
+        )
+        return 1
+    login()
+    return 0
 
 
 def cmd_collections(args: argparse.Namespace) -> int:
@@ -287,6 +302,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--collection", action="append", default=[], help="collection or alias to test"
     )
     doctor.set_defaults(run=cmd_doctor)
+
+    login = sub.add_parser(
+        "login", help="log in once and save the login (providers that support it)"
+    )
+    login.add_argument("--provider", required=True)
+    login.set_defaults(run=cmd_login)
 
     collections = sub.add_parser("collections", help="list the collections of a provider")
     collections.add_argument("--provider", required=True)

@@ -9,7 +9,9 @@ from eo_fetch.backends.base import Backend
 from eo_fetch.backends.eumetsat import EumetsatBackend
 from eo_fetch.backends.http_index import HttpIndexBackend
 from eo_fetch.backends.local import LocalBackend
+from eo_fetch.backends.nasa import NasaBackend
 from eo_fetch.backends.s3 import S3Backend
+from eo_fetch.backends.stac import StacBackend
 
 # Backends import their third-party library only when first used, so listing is always cheap.
 BACKENDS: dict[str, Callable[..., Backend]] = {
@@ -17,6 +19,8 @@ BACKENDS: dict[str, Callable[..., Backend]] = {
     "eumetsat": EumetsatBackend,
     "s3": S3Backend,
     "http-index": HttpIndexBackend,
+    "nasa": NasaBackend,
+    "stac": StacBackend,
 }
 
 
@@ -46,7 +50,9 @@ __all__ = [
     "EumetsatBackend",
     "HttpIndexBackend",
     "LocalBackend",
+    "NasaBackend",
     "S3Backend",
+    "StacBackend",
     "backend_factory",
     "get_backend",
     "param_names",

@@ -74,6 +74,8 @@ def check_product(
         return Row(info.name, alias, "no reader", format_name, short(error))
     except Exception as error:
         return Row(info.name, alias, "fail", format_name, f"open: {short(error)}")
+    if not dataset.data_vars:
+        return Row(info.name, alias, "fail", format_name, "opened, but holds no variables")
     first = summarize(dataset).splitlines()[0]
     note = "" if where == info.products[alias] else f"  (in {where})"
     return Row(info.name, alias, "ok", format_name, f"{result.path.name}  {first}{note}")

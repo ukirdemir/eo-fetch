@@ -93,6 +93,21 @@ def test_plain_hdf5_with_group(tmp_path):
     assert dataset["precipitation"].shape == (2, 3)
 
 
+def test_hdf5_nested_groups_skip_metadata(tmp_path):
+    h5py = pytest.importorskip("h5py")
+    pytest.importorskip("h5netcdf")
+    from eo_fetch.readers.generic import first_data_group
+
+    path = tmp_path / "nested.h5"
+    with h5py.File(path, "w") as handle:
+        handle.create_dataset("Metadata/Extent/box", data=[[1.0, 2.0], [3.0, 4.0]])
+        handle.create_dataset("HDFEOS/GRIDS/NO2/Data Fields/column", data=[[1.0, 2.0, 3.0]] * 2)
+    assert first_data_group(path) == "HDFEOS/GRIDS/NO2/Data Fields"
+    dataset = open_data(path)
+    assert "column" in dataset
+    assert dataset["column"].shape == (2, 3)
+
+
 def write_odim(path, raw):
     h5py = pytest.importorskip("h5py")
     with h5py.File(path, "w") as handle:

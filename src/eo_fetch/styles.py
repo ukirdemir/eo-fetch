@@ -38,6 +38,14 @@ STYLES: dict[str, PlotStyle] = {
             description="Rain rate; light blue for drizzle to dark blue for extreme rain",
         ),
         PlotStyle(
+            "precip-daily",
+            "YlGnBu",
+            (0.5, 1, 2, 5, 10, 20, 50, 100, 200),
+            "mm/day",
+            "max",
+            description="Daily mean precipitation rate (IMERG daily and similar)",
+        ),
+        PlotStyle(
             "precip-accumulation",
             "YlGnBu",
             (0.1, 1, 2, 5, 10, 20, 50, 100, 200),
@@ -137,6 +145,7 @@ RULES: tuple[tuple[tuple[str, ...], tuple[str, ...], str], ...] = (
     (("ir_", "c13", "c14", "c15", "c11", "c07", "brightness"), ("k",), "ir-brightness"),
     (("wv_", "c08", "c09", "c10"), ("k",), "wv-brightness"),
     (("rain", "precip", "rate", "rainfall"), ("mm/h", "mm h-1", "mm hr-1"), "precip-rate"),
+    (("rain", "precip"), ("mm/day", "mm d-1", "mm/d", "mm day-1"), "precip-daily"),
     (("rain", "precip", "acrr", "accum"), ("mm", "kg m-2"), "precip-accumulation"),
     (("dbz", "reflectivity"), ("dbz",), "reflectivity"),
     (("refl", "cmi", "albedo"), ("%", "percent"), "reflectance"),

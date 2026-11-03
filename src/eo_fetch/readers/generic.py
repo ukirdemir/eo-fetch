@@ -13,12 +13,26 @@ def open_netcdf(path: Path, **options):
 
 
 def first_data_group(path: Path) -> str | None:
-    """Name of the first top-level HDF5 group, for files like IMERG that keep data in ``Grid``."""
+    """Path of the HDF5 group that holds the data arrays.
+
+    IMERG keeps them in ``Grid``; HDF-EOS5 files (OMI) and SMAP nest them deeper. Otherwise the
+    first group (in alphabetical order, skipping metadata) with a 2-D or larger array is used.
+    """
     import h5py
 
+    candidates: list[str] = []
     with h5py.File(path, "r") as handle:
-        groups = [key for key, node in handle.items() if isinstance(node, h5py.Group)]
-    return "Grid" if "Grid" in groups else (groups[0] if groups else None)
+        if isinstance(handle.get("Grid"), h5py.Group):
+            return "Grid"
+
+        def visit(name, node):
+            if isinstance(node, h5py.Dataset) and node.ndim >= 2 and "/" in name:
+                parent = name.rsplit("/", 1)[0]
+                if "metadata" not in parent.lower() and parent not in candidates:
+                    candidates.append(parent)
+
+        handle.visititems(visit)
+    return candidates[0] if candidates else None
 
 
 def open_hdf5(path: Path, group: str | None = None, **options):

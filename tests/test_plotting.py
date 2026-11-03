@@ -9,6 +9,8 @@ def test_pick_style_by_name_and_units():
     assert pick("C13", {"units": "K"}).name == "ir-brightness"
     assert pick("WV_062", {"units": "K"}).name == "wv-brightness"
     assert pick("rate", {"units": "mm/h", "quantity": "RATE"}).name == "precip-rate"
+    assert pick("precipitation", {"units": "mm/day"}).name == "precip-daily"
+    assert pick("precipitation_cnt", {"units": "count"}) is None
     assert pick("C04", {"units": "%", "long_name": "reflectance factor"}).name == "reflectance"
     assert pick("C04", {"units": "1", "long_name": "reflectance factor"}).name == (
         "reflectance-fraction"

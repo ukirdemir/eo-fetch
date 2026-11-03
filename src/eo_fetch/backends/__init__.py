@@ -7,6 +7,7 @@ from collections.abc import Callable, Mapping
 
 from eo_fetch.backends.base import Backend
 from eo_fetch.backends.eumetsat import EumetsatBackend
+from eo_fetch.backends.http_index import HttpIndexBackend
 from eo_fetch.backends.local import LocalBackend
 from eo_fetch.backends.s3 import S3Backend
 
@@ -15,6 +16,7 @@ BACKENDS: dict[str, Callable[..., Backend]] = {
     "local": LocalBackend,
     "eumetsat": EumetsatBackend,
     "s3": S3Backend,
+    "http-index": HttpIndexBackend,
 }
 
 
@@ -42,6 +44,7 @@ __all__ = [
     "BACKENDS",
     "Backend",
     "EumetsatBackend",
+    "HttpIndexBackend",
     "LocalBackend",
     "S3Backend",
     "backend_factory",

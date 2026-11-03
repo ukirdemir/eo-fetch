@@ -10,6 +10,9 @@ from itertools import islice
 from pathlib import Path
 
 from eo_fetch.models import Item, Query
+from eo_fetch.timeguess import guess_time
+
+__all__ = ["S3Backend", "goes_prefixes", "goes_time", "guess_time", "split_product"]
 
 # GOES-R file names carry the scan start as _sYYYYDDDHHMMSSs (day of year, tenths of a second).
 GOES_TIME = re.compile(r"_s(\d{4})(\d{3})(\d{2})(\d{2})(\d{2})\d")
@@ -32,35 +35,6 @@ def goes_time(name: str) -> datetime | None:
     return datetime(year, 1, 1, tzinfo=UTC) + timedelta(
         days=day - 1, hours=hour, minutes=minute, seconds=second
     )
-
-
-CYCLE_PATH = re.compile(r"(?<!\d)(\d{4})(\d{2})(\d{2})/(\d{2})/")
-NAME_DATE = re.compile(r"(?<!\d)(\d{4})(\d{2})(\d{2})(?:[_T-]?(\d{2})(\d{2})(\d{2})?)?(?!\d)")
-
-
-def guess_time(key: str) -> datetime | None:
-    """Guess the data time from a model-cycle folder (``.../20260915/12/...``) or a file name.
-
-    Returns None when nothing plausible is found (years outside 1950 to 2100, impossible months
-    or days). The time is a guess: it is meant for display and for --start/--end filtering.
-    """
-    match = CYCLE_PATH.search(key)
-    if match:
-        year, month, day, hour = (int(group) for group in match.groups())
-        minute = second = 0
-    else:
-        match = NAME_DATE.search(key.rsplit("/", 1)[-1])
-        if not match:
-            return None
-        year, month, day, hour, minute, second = (
-            int(group) if group else 0 for group in match.groups()
-        )
-    if not 1950 <= year <= 2100:
-        return None
-    try:
-        return datetime(year, month, day, hour, minute, second, tzinfo=UTC)
-    except ValueError:
-        return None
 
 
 def goes_prefixes(bucket: str, root: str, start: datetime, end: datetime) -> list[str]:

@@ -6,6 +6,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 UNITS = {"RATE": "mm/h", "ACRR": "mm", "DBZH": "dBZ"}
+LONG_NAMES = {
+    "RATE": "Rain rate",
+    "ACRR": "Accumulated precipitation",
+    "DBZH": "Radar reflectivity",
+}
 
 
 def text(value) -> str:
@@ -88,7 +93,13 @@ def open_radolan(path: Path, **options):
                 if name in variables:
                     name = f"{name}_{group_name}_{data_name}"
                 variables[name] = xr.Variable(
-                    ("y", "x"), values, {"units": UNITS.get(quantity, ""), "quantity": quantity}
+                    ("y", "x"),
+                    values,
+                    {
+                        "units": UNITS.get(quantity, ""),
+                        "quantity": quantity,
+                        "long_name": LONG_NAMES.get(quantity, quantity),
+                    },
                 )
         if not variables:
             raise ValueError(f"No dataset*/data*/data arrays found in {path.name}")

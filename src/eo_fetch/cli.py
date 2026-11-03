@@ -194,6 +194,49 @@ def cmd_open(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_plot(args: argparse.Namespace) -> int:
+    from eo_fetch import plotting
+
+    output = args.output or Path("plots") / (args.path.stem[:60] + ".png")
+    used = plotting.plot(
+        args.path,
+        output,
+        variable=args.variable,
+        style=args.style,
+        domain=args.domain,
+        resolution=args.resolution,
+        bbox=tuple(args.bbox) if args.bbox else None,
+        title=args.title,
+        format=args.format,
+        **parse_options(args.option),
+    )
+    print(f"Saved {output} (style: {used})")
+    return 0
+
+
+def cmd_convert(args: argparse.Namespace) -> int:
+    from eo_fetch import bridge
+
+    output = bridge.convert(
+        args.path,
+        args.output,
+        resolution=args.resolution,
+        bbox=tuple(args.bbox) if args.bbox else None,
+        format=args.format,
+        **parse_options(args.option),
+    )
+    print(f"Wrote {output}")
+    return 0
+
+
+def cmd_styles(args: argparse.Namespace) -> int:
+    from eo_fetch.styles import STYLES
+
+    for style in STYLES.values():
+        print(f"{style.name:20} {style.label:6} {style.description}")
+    return 0
+
+
 def cmd_check_readers(args: argparse.Namespace) -> int:
     from eo_fetch import checkreaders
 
@@ -258,6 +301,34 @@ def build_parser() -> argparse.ArgumentParser:
         "--option", action="append", default=[], metavar="KEY=VALUE", help="reader option"
     )
     open_cmd.set_defaults(run=cmd_open)
+
+    plot_cmd = sub.add_parser("plot", help="draw a downloaded file on a map")
+    plot_cmd.add_argument("path", type=Path)
+    plot_cmd.add_argument("--output", type=Path, help="PNG file (default plots/<name>.png)")
+    plot_cmd.add_argument("--variable")
+    plot_cmd.add_argument("--style", help="style name, see 'eo-fetch styles' (default: automatic)")
+    plot_cmd.add_argument("--domain", help="earthkit-plots domain name, e.g. Europe")
+    plot_cmd.add_argument("--bbox", type=float, nargs=4, metavar=("W", "S", "E", "N"))
+    plot_cmd.add_argument("--resolution", type=float, help="degrees, for projected data")
+    plot_cmd.add_argument("--title")
+    plot_cmd.add_argument("--format", help="override the detected file format")
+    plot_cmd.add_argument(
+        "--option", action="append", default=[], metavar="KEY=VALUE", help="reader option"
+    )
+    plot_cmd.set_defaults(run=cmd_plot)
+
+    convert_cmd = sub.add_parser("convert", help="write a readable file as NetCDF or Zarr")
+    convert_cmd.add_argument("path", type=Path)
+    convert_cmd.add_argument("output", type=Path, help="file ending in .nc or .zarr")
+    convert_cmd.add_argument("--resolution", type=float, help="regrid projected data (degrees)")
+    convert_cmd.add_argument("--bbox", type=float, nargs=4, metavar=("W", "S", "E", "N"))
+    convert_cmd.add_argument("--format", help="override the detected file format")
+    convert_cmd.add_argument(
+        "--option", action="append", default=[], metavar="KEY=VALUE", help="reader option"
+    )
+    convert_cmd.set_defaults(run=cmd_convert)
+
+    sub.add_parser("styles", help="list the plot styles").set_defaults(run=cmd_styles)
 
     check = sub.add_parser(
         "check-readers", help="download the smallest recent file of each product and open it"

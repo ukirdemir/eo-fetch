@@ -34,6 +34,9 @@ def to_latlon(dataset, resolution: float, bbox=None, radius_m: float | None = No
 
     x = dataset["x"].values
     y = dataset["y"].values
+    flip_x = bool(x[0] > x[-1])  # scan order east to west: put west first
+    if flip_x:
+        x = x[::-1]
     dx = abs(float(x[1] - x[0]))
     dy = abs(float(y[1] - y[0]))
     source = AreaDefinition(
@@ -64,6 +67,8 @@ def to_latlon(dataset, resolution: float, bbox=None, radius_m: float | None = No
         if variable.dims != ("y", "x"):
             continue
         values = variable.values[::-1] if flip else variable.values
+        if flip_x:
+            values = values[:, ::-1]
         resampled = resample_nearest(
             source,
             values,

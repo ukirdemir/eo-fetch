@@ -61,8 +61,13 @@ def load_scene(paths: list[Path], reader: str, channels, resolution, area_extent
         scene = scene.resample(target, resampler="nearest")
         crs_wkt = target.crs.to_wkt()
     dataset = scene.to_xarray_dataset().load()
+    start = dataset[channels[0]].attrs.get("start_time")
     for variable in dataset.data_vars.values():
         variable.attrs.pop("area", None)
+    if start is not None:
+        import numpy as np
+
+        dataset = dataset.assign_coords(time=np.datetime64(start.replace(tzinfo=None), "ns"))
     if resolution:
         dataset = dataset.rename({"x": "lon", "y": "lat"})
     dataset.attrs = {"crs_wkt": crs_wkt}

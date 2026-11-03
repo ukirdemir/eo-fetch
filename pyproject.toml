@@ -15,7 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 eumetsat = ["eumdac"]
 nasa = ["earthaccess"]
-stac = ["pystac-client"]
+stac = ["pystac-client", "planetary-computer", "s3fs"]
 noaa = ["herbie-data", "s3fs"]
 dwd = ["wetterdienst"]
 earthkit = ["earthkit-data", "earthkit-plots"]

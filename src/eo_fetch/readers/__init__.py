@@ -14,7 +14,7 @@ from pathlib import Path
 NETCDF_SUFFIXES = (".nc", ".nc4", ".cdf", ".netcdf")
 HDF5_SUFFIXES = (".h5", ".hdf5", ".he5", ".hdf")
 GRIB_SUFFIXES = (".grib", ".grb", ".grib2", ".grb2", ".grib1", ".grb1")
-TIFF_SUFFIXES = (".tif", ".tiff", ".asc")  # any GDAL raster, including ESRI ASCII grids
+TIFF_SUFFIXES = (".tif", ".tiff", ".asc", ".jp2")  # any GDAL raster (COG, ASCII grid, JPEG 2000)
 SEVIRI_L2 = re.compile(r"-sevi-msg(?:clmk|clth|aese|crmn|firg|mpeg|ocae)-")
 
 

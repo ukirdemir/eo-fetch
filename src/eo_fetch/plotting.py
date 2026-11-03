@@ -49,14 +49,22 @@ def prepare(dataset, variable: str | None = None, resolution: float | None = Non
                 f"{name} has dimensions {tuple(dims)}: not on a regular latitude/longitude "
                 "or projected (y, x) grid, so it cannot be drawn yet"
             )
-        from eo_fetch.regrid import projected_bounds, to_latlon
+        from pyproj import CRS
+
+        from eo_fetch.regrid import crop_projected, decimate, projected_bounds, to_latlon
 
         extra = [d for d in dims if d not in ("y", "x")]
         subset = subset.isel({d: 0 for d in extra})
-        if resolution is None:
-            step = abs(float(subset["x"][1] - subset["x"][0]))
-            resolution = max(step / 111_000.0, 0.01)
-        subset = to_latlon(subset, resolution=resolution, bbox=bbox or projected_bounds(subset))
+        if CRS.from_wkt(dataset.attrs["crs_wkt"]).is_geographic:
+            subset = subset.rename({"y": "lat", "x": "lon"})
+        else:
+            if bbox:
+                subset = crop_projected(subset, bbox)
+            subset = decimate(subset)
+            if resolution is None:
+                step = abs(float(subset["x"][1] - subset["x"][0]))
+                resolution = max(step / 111_000.0, 0.0001)
+            subset = to_latlon(subset, resolution=resolution, bbox=bbox or projected_bounds(subset))
         lat, lon = "lat", "lon"
     array = subset[name]
     extra = [d for d in array.dims if d not in (lat, lon)]
@@ -111,18 +119,23 @@ def plot(
         ) from error
     from eo_fetch.readers import open_data
 
-    dataset = open_data(source, **options) if isinstance(source, str | Path) else source
-    array = prepare(dataset, variable, resolution, bbox)
-    chosen = styles.get_style(style) if style else styles.pick_style(array.name, array.attrs)
-    kwargs = {}
-    if chosen is not None:
-        kwargs["style"] = styles.to_earthkit(chosen)
-    if domain is None and bbox:
-        west, south, east, north = bbox
-        domain = [west, east, south, north]
-    chart = ekp.quickplot(
-        array, domain=domain, subplot_titles=title or default_title(array), **kwargs
-    )
-    Path(output).parent.mkdir(parents=True, exist_ok=True)
-    chart.save(str(output))
+    opened = isinstance(source, str | Path)
+    dataset = open_data(source, **options) if opened else source
+    try:
+        array = prepare(dataset, variable, resolution, bbox)
+        chosen = styles.get_style(style) if style else styles.pick_style(array.name, array.attrs)
+        kwargs = {}
+        if chosen is not None:
+            kwargs["style"] = styles.to_earthkit(chosen)
+        if domain is None and bbox:
+            west, south, east, north = bbox
+            domain = [west, east, south, north]
+        chart = ekp.quickplot(
+            array, domain=domain, subplot_titles=title or default_title(array), **kwargs
+        )
+        Path(output).parent.mkdir(parents=True, exist_ok=True)
+        chart.save(str(output))
+    finally:
+        if opened:  # the data may be read lazily, so close only after the picture is saved
+            dataset.close()
     return chosen.name if chosen else "default"

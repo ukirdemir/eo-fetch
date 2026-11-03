@@ -78,4 +78,8 @@ def open_geotiff(path: Path, **options):
     import rioxarray
 
     array = rioxarray.open_rasterio(path, **options)
-    return array.to_dataset(name="data")
+    dataset = array.to_dataset(name="data")
+    dataset["data"].attrs.setdefault("long_name", path.stem)
+    if array.rio.crs is not None:
+        dataset.attrs["crs_wkt"] = array.rio.crs.to_wkt()
+    return dataset

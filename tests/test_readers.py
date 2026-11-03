@@ -80,6 +80,7 @@ def test_geotiff_roundtrip(tmp_path):
     array.rio.to_raster(path)
     dataset = open_data(path)
     assert dataset["data"].shape == (1, 2, 2)
+    assert "crs_wkt" in dataset.attrs
 
 
 def test_plain_hdf5_with_group(tmp_path):

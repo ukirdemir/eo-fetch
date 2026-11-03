@@ -18,6 +18,43 @@ def projected_bounds(dataset) -> tuple[float, float, float, float]:
     return float(lon[ok].min()), float(lat[ok].min()), float(lon[ok].max()), float(lat[ok].max())
 
 
+def crop_projected(dataset, bbox):
+    """Cut a projected dataset down to the cells that may fall inside (west, south, east, north).
+
+    Raises ValueError when the box does not touch the data.
+    """
+    import numpy as np
+    from pyproj import CRS, Transformer
+
+    west, south, east, north = bbox
+    to_projected = Transformer.from_crs("EPSG:4326", CRS.from_wkt(dataset.attrs["crs_wkt"]), True)
+    lons = np.linspace(west, east, 9)
+    lats = np.linspace(south, north, 9)
+    edge_lon = np.concatenate([lons, lons, np.full(9, west), np.full(9, east)])
+    edge_lat = np.concatenate([np.full(9, south), np.full(9, north), lats, lats])
+    px, py = to_projected.transform(edge_lon, edge_lat)
+    ok = np.isfinite(px) & np.isfinite(py)
+    if not ok.any():
+        raise ValueError("The bounding box lies outside the area the data covers")
+    x, y = dataset["x"].values, dataset["y"].values
+    cols = np.where((x >= px[ok].min()) & (x <= px[ok].max()))[0]
+    rows = np.where((y >= py[ok].min()) & (y <= py[ok].max()))[0]
+    if cols.size == 0 or rows.size == 0:
+        raise ValueError("The bounding box lies outside the area the data covers")
+    return dataset.isel(
+        x=slice(int(cols.min()), int(cols.max()) + 1),
+        y=slice(int(rows.min()), int(rows.max()) + 1),
+    )
+
+
+def decimate(dataset, max_pixels: int = 4000):
+    """Keep every n-th cell so that neither side exceeds ``max_pixels`` (for plotting)."""
+    step = -(-max(dataset.sizes["x"], dataset.sizes["y"]) // max_pixels)
+    if step <= 1:
+        return dataset
+    return dataset.isel(x=slice(None, None, step), y=slice(None, None, step))
+
+
 def to_latlon(dataset, resolution: float, bbox=None, radius_m: float | None = None):
     """Nearest-neighbour resampling of every (y, x) variable to a regular lat/lon grid.
 
@@ -66,7 +103,9 @@ def to_latlon(dataset, resolution: float, bbox=None, radius_m: float | None = No
     for name, variable in dataset.data_vars.items():
         if variable.dims != ("y", "x"):
             continue
-        values = variable.values[::-1] if flip else variable.values
+        # integer rasters (Sentinel-2, class maps) need a float array to hold NaN for empty cells
+        values = variable.values.astype("float32")
+        values = values[::-1] if flip else values
         if flip_x:
             values = values[:, ::-1]
         resampled = resample_nearest(

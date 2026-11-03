@@ -90,6 +90,60 @@ def projected(descending_x: bool):
     )
 
 
+def test_crop_projected_and_decimate():
+    pytest.importorskip("numpy")
+    pytest.importorskip("pyproj")
+    from pyproj import Transformer
+
+    from eo_fetch.regrid import crop_projected, decimate
+
+    dataset = projected(False)
+    to_geo = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
+    west, north = to_geo.transform(dataset["x"].values[10], dataset["y"].values[10])
+    east, south = to_geo.transform(dataset["x"].values[20], dataset["y"].values[20])
+    cropped = crop_projected(dataset, (west, south, east, north))
+    assert 10 <= cropped.sizes["x"] <= 13 and 10 <= cropped.sizes["y"] <= 13
+    assert float(cropped["x"].min()) >= float(dataset["x"].values[10]) - 1.0
+    with pytest.raises(ValueError, match="outside"):
+        crop_projected(dataset, (100.0, 0.0, 101.0, 1.0))
+    assert decimate(dataset, max_pixels=40) is dataset
+    assert decimate(dataset, max_pixels=10).sizes["x"] == 10
+
+
+def test_prepare_geographic_geotiff_and_projected_raster():
+    np = pytest.importorskip("numpy")
+    xr = pytest.importorskip("xarray")
+    pytest.importorskip("pyproj")
+    pytest.importorskip("pyresample")
+    from pyproj import CRS
+
+    from eo_fetch.plotting import prepare
+
+    geographic = xr.Dataset(
+        {"data": (("band", "y", "x"), np.zeros((1, 4, 5)))},
+        coords={"band": [1], "y": [3.5, 2.5, 1.5, 0.5], "x": [0.5, 1.5, 2.5, 3.5, 4.5]},
+        attrs={"crs_wkt": CRS.from_epsg(4326).to_wkt()},
+    )
+    array = prepare(geographic)
+    assert array.dims == ("latitude", "longitude")
+    raster = projected(False).expand_dims(band=[1])
+    array = prepare(raster, resolution=0.01)
+    assert array.dims == ("latitude", "longitude")
+
+
+def test_regrid_integer_raster_keeps_values_and_uses_nan():
+    np = pytest.importorskip("numpy")
+    pytest.importorskip("pyresample")
+    from eo_fetch.regrid import to_latlon
+
+    dataset = projected(False)
+    dataset["v"] = dataset["v"].astype("uint16")
+    result = to_latlon(dataset, resolution=0.01, bbox=(8.0, 40.0, 20.0, 60.0))
+    assert result["v"].dtype == np.float32
+    assert np.isnan(result["v"].values).any()  # cells outside the data
+    assert float(np.nanmax(result["v"].values)) == 39.0
+
+
 def test_regrid_is_independent_of_x_scan_direction():
     np = pytest.importorskip("numpy")
     pytest.importorskip("pyresample")

@@ -102,6 +102,14 @@ STYLES: dict[str, PlotStyle] = {
             description="Visible and near-infrared reflectance in percent",
         ),
         PlotStyle(
+            "optical-dn",
+            "gray",
+            steps(0, 4000, 250),
+            "DN",
+            "max",
+            description="Raw optical bands such as Sentinel-2 L2A (reflectance times 10 000)",
+        ),
+        PlotStyle(
             "reflectance-fraction",
             "gray",
             steps(0, 1, 0.05),

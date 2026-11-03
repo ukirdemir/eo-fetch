@@ -206,6 +206,7 @@ def cmd_open(args: argparse.Namespace) -> int:
     dataset = open_data(args.path, format=args.format, **parse_options(args.option))
     print(f"{args.path.name}: format {format_name}")
     print(summarize(dataset))
+    dataset.close()
     return 0
 
 

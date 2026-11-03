@@ -29,9 +29,7 @@ def to_earthkit(source, variable: str | None = None, resolution=None, bbox=None,
     try:
         import earthkit.data as ekd
     except ImportError as error:
-        raise RuntimeError(
-            "This needs earthkit-data: pip install 'eo-fetch[earthkit]'"
-        ) from error
+        raise RuntimeError("This needs earthkit-data: pip install 'eo-fetch[earthkit]'") from error
     from eo_fetch.plotting import prepare
 
     array = prepare(to_xarray(source, **options), variable, resolution, bbox)

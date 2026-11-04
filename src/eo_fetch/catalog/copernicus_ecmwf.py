@@ -30,6 +30,33 @@ register(
 
 register(
     ProviderInfo(
+        name="copernicus-marine",
+        backend="marine",
+        title="Copernicus Marine Service (CMEMS): ocean physics, biogeochemistry, sea ice, waves",
+        auth="account",
+        licence=(
+            "Copernicus Marine products are free and open; a free account is needed to "
+            "download. Cite each product's DOI."
+        ),
+        attribution=(
+            "Generated using E.U. Copernicus Marine Service Information; cite the product DOI"
+        ),
+        latency="analysis and forecast products daily; reprocessed products months behind",
+        notes=(
+            "Plans one subset per month. --product is a dataset id (find them with "
+            "`eo-fetch collections --provider copernicus-marine --text temperature`); "
+            "--start and --end are required (end exclusive); --param variables=thetao,so "
+            "(default all), min_depth and max_depth in metres, version. --bbox limits the "
+            "area. Log in once with `eo-fetch login --provider copernicus-marine`. Subsets of "
+            "large datasets can be big: use a small area, short time span and few variables."
+        ),
+        products={"sst-l4-nrt": "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2"},
+        verified="",
+    )
+)
+
+register(
+    ProviderInfo(
         name="cds",
         backend="cds",
         title="Copernicus Climate Data Store: ERA5 and ERA5-Land reanalysis (hourly)",
@@ -56,6 +83,6 @@ register(
             "era5-pressure-levels": "reanalysis-era5-pressure-levels",
             "era5-land": "reanalysis-era5-land",
         },
-        verified="",
+        verified="2026-11-04",
     )
 )

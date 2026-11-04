@@ -29,7 +29,17 @@ eo-fetch open data/dwd/raa01-yw_10000-2611011130-dwd---bin.hdf5
 eo-fetch plot data/dwd/raa01-yw_10000-2611011130-dwd---bin.hdf5 --bbox 5 47 16 55.5
 ```
 
-EUMETSAT needs an account and a licence per collection (`eo-fetch doctor --provider eumetsat` explains what is missing); the keys stay on your computer.
+## Credentials
+
+Providers with accounts have a one-time `eo-fetch login --provider NAME` (hidden prompt, saved in your user folder as a plain-text file; delete the file to log out), and `eo-fetch doctor --provider NAME` tells you what is missing. You can also set the environment variables or write the file yourself. eo-fetch never stores credentials anywhere else and never sends them to any service except the provider.
+
+| Provider | `login` writes | Or use |
+| --- | --- | --- |
+| `nasa` (Earthdata) | `~/.netrc` | `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`, or `EARTHDATA_TOKEN`; approve the provider's application once at urs.earthdata.nasa.gov |
+| `eumetsat` | `~/.eumdac/credentials` | `EUMETSAT_KEY` and `EUMETSAT_SECRET`; a licence per collection |
+| `cds` (ERA5) | `~/.cdsapirc` | `CDSAPI_URL` and `CDSAPI_KEY`; accept each dataset's licence on its page |
+| `cdse` | none | `CDSE_S3_KEY` and `CDSE_S3_SECRET` from the Copernicus Data Space S3 key manager |
+| `dwd`, `noaa`, `earth-search`, `planetary-computer`, `ecmwf-open-data` | none needed | |
 
 ## Which files can be opened?
 

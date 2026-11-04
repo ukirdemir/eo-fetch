@@ -16,6 +16,7 @@ from pathlib import Path
 from eo_fetch.models import Item, Query
 
 DEFAULT_HOURS = ("00:00", "06:00", "12:00", "18:00")
+CDS_URL = "https://cds.climate.copernicus.eu/api"
 
 
 def split_list(text: str) -> list[str]:
@@ -91,6 +92,20 @@ class CdsBackend:
     def __init__(self) -> None:
         self._client = None
 
+    def login(self) -> None:
+        """Ask for the CDS personal access token (hidden) and save it to ~/.cdsapirc."""
+        from eo_fetch.backends.credentials import ask_secret, confirm_overwrite, write_private
+
+        path = Path.home() / ".cdsapirc"
+        if not confirm_overwrite(path):
+            print("Left unchanged.")
+            return
+        print("Find your token on your profile page at https://cds.climate.copernicus.eu")
+        key = ask_secret("CDS personal access token (input hidden): ")
+        write_private(path, f"url: {CDS_URL}\nkey: {key}\n")
+        print(f"Saved to {path} (plain text, in your user folder). Delete the file to log out.")
+        print("Remember to accept each dataset's licence on its page before downloading.")
+
     def client(self):
         if self._client is None:
             import cdsapi
@@ -151,9 +166,8 @@ class CdsBackend:
         else:
             print(
                 "  credentials: NOT FOUND. Create a free account at "
-                "https://cds.climate.copernicus.eu, then put your key in ~/.cdsapirc "
-                "(url: https://cds.climate.copernicus.eu/api and key: <your key>) "
-                "or set CDSAPI_URL and CDSAPI_KEY."
+                "https://cds.climate.copernicus.eu, then run `eo-fetch login --provider cds` "
+                "(or write ~/.cdsapirc yourself, or set CDSAPI_URL and CDSAPI_KEY)."
             )
             return False
         print("  licences: accept each dataset's licence on its page, or requests will be refused")

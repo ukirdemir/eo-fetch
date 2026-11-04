@@ -36,8 +36,8 @@ def load_credentials() -> tuple[str, str]:
     path = Path.home() / ".eumdac" / "credentials"
     if not path.is_file():
         raise RuntimeError(
-            "No EUMETSAT credentials: set EUMETSAT_KEY and EUMETSAT_SECRET, or run "
-            "`eumdac set-credentials KEY SECRET`."
+            "No EUMETSAT credentials: run `eo-fetch login --provider eumetsat`, or set "
+            "EUMETSAT_KEY and EUMETSAT_SECRET."
         )
     key, secret = path.read_text().strip().split(",")[:2]
     return key.strip(), secret.strip()
@@ -57,6 +57,22 @@ class EumetsatBackend:
     def __init__(self) -> None:
         self._store = None
         self._token = None
+
+    def login(self) -> None:
+        """Ask for the consumer key and secret (secret hidden), save them for eumdac."""
+        from eo_fetch.backends.credentials import ask_secret, confirm_overwrite, write_private
+
+        path = Path.home() / ".eumdac" / "credentials"
+        if not confirm_overwrite(path):
+            print("Left unchanged.")
+            return
+        print("Find them at https://api.eumetsat.int/api-key (EUMETSAT Data Services account)")
+        key = input("Consumer key: ").strip()
+        secret = ask_secret("Consumer secret (input hidden): ")
+        if not key:
+            raise ValueError("Nothing entered")
+        write_private(path, f"{key},{secret}\n")
+        print(f"Saved to {path} (plain text, in your user folder). Delete the file to log out.")
 
     def datastore(self):
         """Return a Data Store client (created on first use)."""

@@ -18,6 +18,11 @@ def test_pick_style_by_name_and_units():
     assert pick("cloud_mask", {}).name == "cloud-mask"
     assert pick("cloud_top_height", {"units": "m"}).name == "cloud-top-height"
     assert pick("t2m", {"units": "K"}).name == "temperature-k"
+    assert pick("2t", {"units": "K"}).name == "temperature-k"
+    grib = {"units": "K", "standard_name": "air_temperature", "long_name": "2 metre temperature"}
+    assert pick("2t", grib).name == "temperature-k"  # "air_" must not look like "ir_"
+    assert pick("terrain_height", {"units": "mm/h"}) is None  # "rain" inside "terrain"
+    assert pick("msl", {"units": "Pa"}).name == "pressure"
     assert pick("t2m", {"units": "degC"}).name == "temperature-c"
     assert pick("SIS", {"units": "W m-2"}).name == "radiation"
     assert pick("something_else", {"units": "furlongs"}) is None
@@ -62,6 +67,22 @@ def test_prepare_lat_lon_with_extra_dimension_and_bbox():
     assert float(array["longitude"].max()) == 10.0
     assert float(array["latitude"].max()) == 50.0
     assert array.attrs["units"] == "K"
+
+
+def test_prepare_wraps_0_360_longitudes():
+    np = pytest.importorskip("numpy")
+    xr = pytest.importorskip("xarray")
+    from eo_fetch.plotting import prepare
+
+    lon = np.arange(0.0, 360.0, 10.0)
+    data = xr.Dataset(
+        {"2t": (("latitude", "longitude"), np.tile(lon, (3, 1)), {"units": "K"})},
+        coords={"latitude": [10.0, 0.0, -10.0], "longitude": lon},
+    )
+    array = prepare(data, bbox=(-20.0, -10.0, 30.0, 10.0))
+    assert float(array["longitude"].min()) == -20.0
+    assert float(array["longitude"].max()) == 30.0
+    assert float(array.sel(longitude=-20.0).isel(latitude=0)) == 340.0  # was 340 degrees east
 
 
 def test_prepare_rejects_unplottable_grids():

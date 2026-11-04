@@ -1,5 +1,5 @@
 """Provider cards: importing this package registers every provider."""
 
-from eo_fetch.catalog import dwd, eumetsat, nasa, noaa, stac
+from eo_fetch.catalog import copernicus_ecmwf, dwd, eumetsat, nasa, noaa, stac
 
-__all__ = ["dwd", "eumetsat", "nasa", "noaa", "stac"]
+__all__ = ["copernicus_ecmwf", "dwd", "eumetsat", "nasa", "noaa", "stac"]

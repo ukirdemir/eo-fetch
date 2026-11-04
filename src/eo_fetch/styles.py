@@ -6,6 +6,7 @@ style. ``pick_style`` chooses by the variable's name, units and descriptive attr
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -19,6 +20,7 @@ class PlotStyle:
     extend: str = "neither"  # neither, min, max, both
     categories: tuple[str, ...] = ()  # labels for categorical data
     description: str = ""
+    convert_to: str = ""  # convert the data to these units before drawing (levels use them)
 
 
 def steps(start: float, stop: float, step: float) -> tuple[float, ...]:
@@ -118,6 +120,15 @@ STYLES: dict[str, PlotStyle] = {
             description="Visible and near-infrared reflectance as a fraction (0 to 1)",
         ),
         PlotStyle(
+            "pressure",
+            "viridis",
+            steps(960, 1050, 5),
+            "hPa",
+            "both",
+            description="Mean sea level or surface pressure, drawn in hPa",
+            convert_to="hPa",
+        ),
+        PlotStyle(
             "cloud-top-height",
             "viridis",
             steps(0, 14000, 1000),
@@ -158,6 +169,7 @@ RULES: tuple[tuple[tuple[str, ...], tuple[str, ...], str], ...] = (
     (("dbz", "reflectivity"), ("dbz",), "reflectivity"),
     (("refl", "cmi", "albedo"), ("%", "percent"), "reflectance"),
     (("refl", "cmi", "albedo"), ("1", "", "dimensionless"), "reflectance-fraction"),
+    (("msl", "pressure", "surface_pressure"), ("pa",), "pressure"),
     (("sis", "radiation", "irradiance", "dni", "ssr"), ("w m-2", "w/m2", "w m**-2"), "radiation"),
     (("temp", "t2m", "2t", "sst", "skt"), ("k", "kelvin"), "temperature-k"),
     (
@@ -182,7 +194,9 @@ def pick_style(name: str, attrs: Mapping[str, object] | None = None) -> PlotStyl
     )
     units = str(attrs.get("units", "")).strip().lower()
     for words, unit_options, style_name in RULES:
-        if any(word in text for word in words) and (not unit_options or units in unit_options):
+        # a keyword must start a word: "ir_" matches "IR_108" but not "air_temperature"
+        found = any(re.search(rf"(?<![a-z]){re.escape(word)}", text) for word in words)
+        if found and (not unit_options or units in unit_options):
             return STYLES[style_name]
     return None
 
@@ -202,6 +216,8 @@ def to_earthkit(style: PlotStyle):
     kwargs = {"colors": colors, "levels": list(style.levels), "extend": style.extend}
     if style.label:
         kwargs["units_label"] = style.label
+    if style.convert_to:
+        kwargs["units"] = style.convert_to
     if style.categories:
         kwargs["categories"] = list(style.categories)
     return Style(**kwargs)

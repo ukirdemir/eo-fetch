@@ -24,8 +24,9 @@ satellite = ["eo-fetch[readers]", "satpy", "eccodes"]
 marine = ["copernicusmarine"]
 esgf = ["esgpull"]
 cds = ["cdsapi"]
+ecmwf = ["ecmwf-opendata"]
 all = [
-    "eo-fetch[eumetsat,nasa,stac,noaa,dwd,earthkit,marine,esgf,cds,readers,satellite]",
+    "eo-fetch[eumetsat,nasa,stac,noaa,dwd,earthkit,marine,esgf,cds,ecmwf,readers,satellite]",
 ]
 dev = ["pytest", "ruff"]
 

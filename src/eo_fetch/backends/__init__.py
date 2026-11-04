@@ -6,6 +6,8 @@ import inspect
 from collections.abc import Callable, Mapping
 
 from eo_fetch.backends.base import Backend
+from eo_fetch.backends.cds import CdsBackend
+from eo_fetch.backends.ecmwf import EcmwfOpenDataBackend
 from eo_fetch.backends.eumetsat import EumetsatBackend
 from eo_fetch.backends.http_index import HttpIndexBackend
 from eo_fetch.backends.local import LocalBackend
@@ -21,6 +23,8 @@ BACKENDS: dict[str, Callable[..., Backend]] = {
     "http-index": HttpIndexBackend,
     "nasa": NasaBackend,
     "stac": StacBackend,
+    "ecmwf-opendata": EcmwfOpenDataBackend,
+    "cds": CdsBackend,
 }
 
 
@@ -47,6 +51,8 @@ def get_backend(name: str, params: Mapping[str, str] | None = None) -> Backend:
 __all__ = [
     "BACKENDS",
     "Backend",
+    "CdsBackend",
+    "EcmwfOpenDataBackend",
     "EumetsatBackend",
     "HttpIndexBackend",
     "LocalBackend",

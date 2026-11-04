@@ -70,6 +70,9 @@ def prepare(dataset, variable: str | None = None, resolution: float | None = Non
     extra = [d for d in array.dims if d not in (lat, lon)]
     array = array.isel({d: 0 for d in extra})
     array = array.rename({lat: "latitude", lon: "longitude"})
+    if float(array["longitude"].max()) > 180.0:  # 0..360 grids (ECMWF, NCEP): wrap to -180..180
+        wrapped = ((array["longitude"] + 180.0) % 360.0) - 180.0
+        array = array.assign_coords(longitude=wrapped).sortby("longitude")
     if bbox:
         west, south, east, north = bbox
         lats = array["latitude"].values

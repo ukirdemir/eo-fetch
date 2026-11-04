@@ -12,7 +12,7 @@ Status: early development. Three providers are tested on real downloads (EUMETSA
 - **A provider registry** with access type (none, account, licence), latency, licence and "last verified" notes.
 - **Readers**: `eo-fetch open` and `eo_fetch.readers.open_data` open downloaded files as xarray datasets: NetCDF, HDF5, Zarr, GRIB, GeoTIFF/ESRI ASCII, gzip/bzip2/zip containers, and dedicated readers for MSG SEVIRI (native and level-2 GRIB), MTG FCI level-1c, GOES ABI and DWD radar composites (ODIM HDF5).
 - **Maps**: `eo-fetch plot` draws a file with earthkit-plots in one shared style registry (`eo-fetch styles`); projected data (radar, geostationary) is regridded to latitude/longitude first. `eo-fetch convert` writes NetCDF or Zarr, and `eo_fetch.bridge.to_earthkit` hands data to earthkit.
-- Backends wrap existing libraries (`eumdac`, `earthaccess`, `pystac-client`, `herbie`, `wetterdienst`, `earthkit-data`, `copernicusmarine`, `esgpull`, `cdsapi`) as optional extras; `eo-fetch` does not replace them.
+- Backends wrap existing libraries (`eumdac`, `earthaccess`, `pystac-client`, `herbie`, `wetterdienst`, `earthkit-data`, `copernicusmarine`, `intake-esgf`, `cdsapi`) as optional extras; `eo-fetch` does not replace them.
 
 ## Install and try
 
@@ -40,7 +40,7 @@ Providers with accounts have a one-time `eo-fetch login --provider NAME` (hidden
 | `cds` (ERA5) | `~/.cdsapirc` | `CDSAPI_URL` and `CDSAPI_KEY`; accept each dataset's licence on its page |
 | `copernicus-marine` | `~/.copernicusmarine/.copernicusmarine-credentials` (written by the toolbox) | `COPERNICUSMARINE_SERVICE_USERNAME` and `COPERNICUSMARINE_SERVICE_PASSWORD` |
 | `cdse` | none | `CDSE_S3_KEY` and `CDSE_S3_SECRET` from the Copernicus Data Space S3 key manager |
-| `dwd`, `noaa`, `earth-search`, `planetary-computer`, `ecmwf-open-data` | none needed | |
+| `dwd`, `noaa`, `earth-search`, `planetary-computer`, `ecmwf-open-data`, `esgf` | none needed | |
 
 ## Which files can be opened?
 

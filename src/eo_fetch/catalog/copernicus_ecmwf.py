@@ -57,6 +57,32 @@ register(
 
 register(
     ProviderInfo(
+        name="esgf",
+        backend="esgf",
+        title="ESGF: CMIP6/CMIP7 and CORDEX climate-model output",
+        auth="none",
+        licence=(
+            "Each dataset carries its own licence (CMIP6 data are mostly CC BY 4.0); check the "
+            "licence attribute inside the files."
+        ),
+        attribution="Cite the CMIP6/CMIP7 dataset DOIs and acknowledge the modelling groups",
+        latency="published months to years after the model runs; nodes can be offline",
+        notes=(
+            "--product is the project (CMIP6, CMIP7, CORDEX; default: intake-esgf's default, "
+            "currently CMIP7). Every --param is an ESGF facet, e.g. --param variable_id=tas "
+            "--param experiment_id=historical --param source_id=CanESM5 --param member_id=r1i1p1f1 "
+            "--param table_id=Amon; a comma separates alternatives. --start/--end keep files "
+            "overlapping the period; --text is a free-text search; --bbox is not supported. "
+            "Search is done by intake-esgf over several indices (the old Solr indices are being "
+            "retired); the search asks every matching dataset for its files, so narrow the facets. "
+            "Needs the intake-esgf package (extra: esgf)."
+        ),
+        verified="2026-11-05",
+    )
+)
+
+register(
+    ProviderInfo(
         name="cds",
         backend="cds",
         title="Copernicus Climate Data Store: ERA5 and ERA5-Land reanalysis (hourly)",

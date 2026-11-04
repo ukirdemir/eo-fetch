@@ -69,6 +69,27 @@ def test_prepare_lat_lon_with_extra_dimension_and_bbox():
     assert array.attrs["units"] == "K"
 
 
+def test_choose_variable_skips_cell_bounds_and_titles_model_calendars():
+    np = pytest.importorskip("numpy")
+    xr = pytest.importorskip("xarray")
+    cftime = pytest.importorskip("cftime")
+    from eo_fetch.plotting import choose_variable, default_title, prepare
+
+    time = [cftime.DatetimeNoLeap(1850, 1, 16, 12), cftime.DatetimeNoLeap(1850, 2, 15)]
+    data = xr.Dataset(
+        {
+            "time_bnds": (("time", "bnds"), np.zeros((2, 2))),
+            "lat_bnds": (("lat", "bnds"), np.zeros((3, 2))),
+            "tas": (("time", "lat", "lon"), np.ones((2, 3, 4)), {"units": "K"}),
+        },
+        coords={"time": time, "lat": [10.0, 0.0, -10.0], "lon": [0.0, 90.0, 180.0, 270.0]},
+    )
+    assert choose_variable(data) == "tas"
+    array = prepare(data)
+    assert array.name == "tas"
+    assert default_title(array) == "tas, 1850-01-16 12:00 UTC"
+
+
 def test_prepare_wraps_0_360_longitudes():
     np = pytest.importorskip("numpy")
     xr = pytest.importorskip("xarray")

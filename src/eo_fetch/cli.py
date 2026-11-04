@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from eo_fetch import __version__
-from eo_fetch.backends import get_backend, param_names
+from eo_fetch.backends import backend_factory, get_backend, param_names
 from eo_fetch.download import Result, download_items
 from eo_fetch.manifest import build_manifest, verify_manifest, write_manifest
 from eo_fetch.models import Item, Query
@@ -48,6 +48,8 @@ def build_backend(info: ProviderInfo, user_params: dict[str, str]):
     """Create the provider's backend, rejecting --param names it does not know."""
     constructor, search = param_names(info.backend)
     unknown = set(user_params) - constructor - search
+    if getattr(backend_factory(info.backend), "open_params", False):
+        unknown = set()  # every other --param is a search facet
     if unknown:
         accepted = ", ".join(sorted(constructor | search)) or "none"
         raise SystemExit(

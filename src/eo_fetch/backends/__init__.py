@@ -8,6 +8,7 @@ from collections.abc import Callable, Mapping
 from eo_fetch.backends.base import Backend
 from eo_fetch.backends.cds import CdsBackend
 from eo_fetch.backends.ecmwf import EcmwfOpenDataBackend
+from eo_fetch.backends.esgf import EsgfBackend
 from eo_fetch.backends.eumetsat import EumetsatBackend
 from eo_fetch.backends.http_index import HttpIndexBackend
 from eo_fetch.backends.local import LocalBackend
@@ -27,6 +28,7 @@ BACKENDS: dict[str, Callable[..., Backend]] = {
     "ecmwf-opendata": EcmwfOpenDataBackend,
     "cds": CdsBackend,
     "marine": MarineBackend,
+    "esgf": EsgfBackend,
 }
 
 
@@ -55,6 +57,7 @@ __all__ = [
     "Backend",
     "CdsBackend",
     "EcmwfOpenDataBackend",
+    "EsgfBackend",
     "EumetsatBackend",
     "HttpIndexBackend",
     "LocalBackend",

@@ -24,10 +24,38 @@ def choose_variable(dataset, variable: str | None = None) -> str:
             available = ", ".join(dataset.data_vars)
             raise ValueError(f"No variable {variable!r}. Available: {available}")
         return variable
-    for name, array in dataset.data_vars.items():
-        if array.ndim >= 2:
+    candidates = [
+        name
+        for name, array in dataset.data_vars.items()
+        if array.ndim >= 2 and not is_auxiliary(dataset, name)
+    ]
+    for name in candidates:
+        dims = {str(d).lower() for d in dataset[name].dims}
+        if dims & set(LAT_NAMES) and dims & set(LON_NAMES):
             return name
+        if {"y", "x"} <= dims:
+            return name
+    if candidates:
+        return candidates[0]
     raise ValueError(f"No variable with two or more dimensions in {list(dataset.data_vars)}")
+
+
+BOUNDS_WORDS = ("bnds", "bounds", "vertices")
+
+
+def is_auxiliary(dataset, name: str) -> bool:
+    """True for cell-bounds variables (``lat_bnds``, ``time_bnds``, ...), which are not data."""
+    lowered = name.lower()
+    if any(word in lowered for word in BOUNDS_WORDS):
+        return True
+    if any(any(word in str(d).lower() for word in BOUNDS_WORDS) for d in dataset[name].dims):
+        return True
+    referenced = {
+        variable.attrs["bounds"]
+        for variable in (*dataset.data_vars.values(), *dataset.coords.values())
+        if "bounds" in variable.attrs
+    }
+    return name in referenced
 
 
 def prepare(dataset, variable: str | None = None, resolution: float | None = None, bbox=None):
@@ -93,7 +121,13 @@ def default_title(array) -> str:
     if "time" in array.coords and array["time"].size == 1:
         import numpy as np
 
-        stamp = np.datetime_as_string(array["time"].values.ravel()[0], unit="m").replace("T", " ")
+        moment = array["time"].values.ravel()[0]
+        if isinstance(moment, np.datetime64):
+            stamp = np.datetime_as_string(moment, unit="m").replace("T", " ")
+        elif hasattr(moment, "strftime"):  # cftime objects of model calendars (noleap, ...)
+            stamp = moment.strftime("%Y-%m-%d %H:%M")
+        else:
+            stamp = str(moment)
         return f"{label}, {stamp} UTC"
     return label
 
@@ -133,9 +167,11 @@ def plot(
         if domain is None and bbox:
             west, south, east, north = bbox
             domain = [west, east, south, north]
-        chart = ekp.quickplot(
-            array, domain=domain, subplot_titles=title or default_title(array), **kwargs
-        )
+        label = title or default_title(array)
+        # The time is in the title; earthkit would convert the coordinate to a timestamp, which
+        # fails on Windows for dates before 1970 (model runs start in 1850).
+        array = array.drop_vars("time", errors="ignore")
+        chart = ekp.quickplot(array, domain=domain, subplot_titles=label, **kwargs)
         Path(output).parent.mkdir(parents=True, exist_ok=True)
         chart.save(str(output))
     finally:

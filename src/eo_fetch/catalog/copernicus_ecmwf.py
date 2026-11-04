@@ -51,7 +51,7 @@ register(
             "large datasets can be big: use a small area, short time span and few variables."
         ),
         products={"sst-l4-nrt": "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2"},
-        verified="",
+        verified="2026-11-04",
     )
 )
 

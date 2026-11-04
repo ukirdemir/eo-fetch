@@ -38,6 +38,7 @@ Providers with accounts have a one-time `eo-fetch login --provider NAME` (hidden
 | `nasa` (Earthdata) | `~/.netrc` | `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`, or `EARTHDATA_TOKEN`; approve the provider's application once at urs.earthdata.nasa.gov |
 | `eumetsat` | `~/.eumdac/credentials` | `EUMETSAT_KEY` and `EUMETSAT_SECRET`; a licence per collection |
 | `cds` (ERA5) | `~/.cdsapirc` | `CDSAPI_URL` and `CDSAPI_KEY`; accept each dataset's licence on its page |
+| `copernicus-marine` | `~/.copernicusmarine/.copernicusmarine-credentials` (written by the toolbox) | `COPERNICUSMARINE_SERVICE_USERNAME` and `COPERNICUSMARINE_SERVICE_PASSWORD` |
 | `cdse` | none | `CDSE_S3_KEY` and `CDSE_S3_SECRET` from the Copernicus Data Space S3 key manager |
 | `dwd`, `noaa`, `earth-search`, `planetary-computer`, `ecmwf-open-data` | none needed | |
 

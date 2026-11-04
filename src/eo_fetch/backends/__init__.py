@@ -11,6 +11,7 @@ from eo_fetch.backends.ecmwf import EcmwfOpenDataBackend
 from eo_fetch.backends.eumetsat import EumetsatBackend
 from eo_fetch.backends.http_index import HttpIndexBackend
 from eo_fetch.backends.local import LocalBackend
+from eo_fetch.backends.marine import MarineBackend
 from eo_fetch.backends.nasa import NasaBackend
 from eo_fetch.backends.s3 import S3Backend
 from eo_fetch.backends.stac import StacBackend
@@ -25,6 +26,7 @@ BACKENDS: dict[str, Callable[..., Backend]] = {
     "stac": StacBackend,
     "ecmwf-opendata": EcmwfOpenDataBackend,
     "cds": CdsBackend,
+    "marine": MarineBackend,
 }
 
 
@@ -56,6 +58,7 @@ __all__ = [
     "EumetsatBackend",
     "HttpIndexBackend",
     "LocalBackend",
+    "MarineBackend",
     "NasaBackend",
     "S3Backend",
     "StacBackend",

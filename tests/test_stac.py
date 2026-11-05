@@ -192,7 +192,8 @@ def test_catalog_url_required():
         StacBackend()
 
 
-def test_cdse_needs_keys(monkeypatch):
+def test_cdse_needs_keys(monkeypatch, tmp_path):
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)  # not the real keys file
     monkeypatch.delenv("CDSE_S3_KEY", raising=False)
     monkeypatch.delenv("CDSE_S3_SECRET", raising=False)
     pytest.importorskip("s3fs")

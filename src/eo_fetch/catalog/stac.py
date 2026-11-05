@@ -71,8 +71,9 @@ register(
         auth="account",
         licence=(
             "Copernicus Sentinel data are free and open. Searching needs no account; downloading "
-            "needs a free CDSE account and S3 keys (CDSE_S3_KEY, CDSE_S3_SECRET) from "
-            "eodata-s3keysmanager.dataspace.copernicus.eu."
+            "needs a free CDSE account and S3 keys from eodata-s3keysmanager.dataspace."
+            "copernicus.eu; save them with `eo-fetch login --provider cdse` (or set "
+            "CDSE_S3_KEY and CDSE_S3_SECRET)."
         ),
         attribution="Contains modified Copernicus Sentinel data",
         latency="Sentinel-2 and Sentinel-1 within hours",
@@ -82,6 +83,6 @@ register(
             "s3_endpoint": "https://eodata.dataspace.copernicus.eu",
         },
         products={"sentinel-2": "sentinel-2-l2a", "sentinel-1": "sentinel-1-grd"},
-        verified="",
+        verified="2026-11-05",
     )
 )

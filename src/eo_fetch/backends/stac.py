@@ -15,6 +15,25 @@ from urllib.parse import urlparse
 from eo_fetch.models import Item, Query
 
 CDSE_S3_ENDPOINT = "https://eodata.dataspace.copernicus.eu"
+CDSE_KEYS_URL = "https://eodata-s3keysmanager.dataspace.copernicus.eu"
+
+
+def cdse_file() -> Path:
+    """Where ``eo-fetch login`` keeps the Copernicus Data Space S3 keys (``key,secret``)."""
+    return Path.home() / ".eo-fetch" / "cdse"
+
+
+def cdse_keys() -> tuple[tuple[str, str] | None, str]:
+    """The S3 keys and where they came from: the environment first, then the file."""
+    key, secret = os.environ.get("CDSE_S3_KEY"), os.environ.get("CDSE_S3_SECRET")
+    if key and secret:
+        return (key, secret), "environment"
+    path = cdse_file()
+    if path.is_file():
+        key, _, secret = path.read_text(encoding="utf-8-sig").strip().partition(",")
+        if key.strip() and secret.strip():
+            return (key.strip(), secret.strip()), str(path)
+    return None, ""
 
 
 def datetime_range(start: datetime | None, end: datetime | None) -> str | None:
@@ -151,13 +170,14 @@ class StacBackend:
             import s3fs
 
             if self.s3_endpoint:
-                key, secret = os.environ.get("CDSE_S3_KEY"), os.environ.get("CDSE_S3_SECRET")
-                if not (key and secret):
+                keys, _ = cdse_keys()
+                if keys is None:
                     raise RuntimeError(
-                        "Copernicus Data Space downloads need S3 keys: create them at "
-                        "https://eodata-s3keysmanager.dataspace.copernicus.eu and set "
-                        "CDSE_S3_KEY and CDSE_S3_SECRET."
+                        f"Copernicus Data Space downloads need S3 keys: create them at "
+                        f"{CDSE_KEYS_URL} and run `eo-fetch login --provider cdse` "
+                        "(or set CDSE_S3_KEY and CDSE_S3_SECRET)."
                     )
+                key, secret = keys
                 self._fs = s3fs.S3FileSystem(
                     key=key, secret=secret, client_kwargs={"endpoint_url": self.s3_endpoint}
                 )
@@ -192,7 +212,26 @@ class StacBackend:
                 print("  signing: FAILED (pip install planetary-computer)")
                 return False
         if self.s3_endpoint:
-            have = bool(os.environ.get("CDSE_S3_KEY") and os.environ.get("CDSE_S3_SECRET"))
-            print(f"  CDSE S3 keys in environment: {'yes' if have else 'NO (needed to download)'}")
-            return have
+            keys, source = cdse_keys()
+            if keys is None:
+                print("  CDSE S3 keys: NO (run `eo-fetch login --provider cdse` to download)")
+                return False
+            print(f"  CDSE S3 keys: found in {source}")
         return True
+
+    def login(self) -> None:
+        """Ask for the Copernicus Data Space S3 keys and save them in ``~/.eo-fetch/cdse``."""
+        from eo_fetch.backends.credentials import ask_secret, confirm_overwrite, write_private
+
+        if not self.s3_endpoint:
+            print(f"{self.catalog_url} needs no login.")
+            return
+        path = cdse_file()
+        if not confirm_overwrite(path):
+            print("Nothing changed.")
+            return
+        print(f"Create S3 keys at {CDSE_KEYS_URL} (log in with your CDSE account).")
+        key = ask_secret("S3 access key (hidden): ")
+        secret = ask_secret("S3 secret key (hidden): ")
+        write_private(path, f"{key},{secret}\n")
+        print(f"Saved in {path} (plain text; delete the file to log out).")

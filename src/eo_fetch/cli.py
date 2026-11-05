@@ -91,10 +91,16 @@ def total_megabytes(items: Sequence[Item]) -> float:
 
 
 def cmd_providers(args: argparse.Namespace) -> int:
-    print(f"{'name':16} {'backend':12} {'auth':8} {'verified':10} title")
-    for info in all_providers():
+    providers = all_providers()
+    name_width = max([4, *(len(info.name) for info in providers)])
+    backend_width = max([7, *(len(info.backend) for info in providers)])
+    print(f"{'name':{name_width}} {'backend':{backend_width}} {'auth':8} {'verified':10} title")
+    for info in providers:
         verified = info.verified or "-"
-        print(f"{info.name:16} {info.backend:12} {info.auth:8} {verified:10} {info.title}")
+        print(
+            f"{info.name:{name_width}} {info.backend:{backend_width}} {info.auth:8} "
+            f"{verified:10} {info.title}"
+        )
     return 0
 
 

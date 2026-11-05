@@ -42,6 +42,16 @@ Providers with accounts have a one-time `eo-fetch login --provider NAME` (hidden
 | `cdse` | `~/.eo-fetch/cdse` (`key,secret`) | `CDSE_S3_KEY` and `CDSE_S3_SECRET` from the Copernicus Data Space S3 key manager (searching needs no keys) |
 | `dwd`, `noaa`, `earth-search`, `planetary-computer`, `ecmwf-open-data`, `esgf` | none needed | |
 
+## Docker
+
+```
+docker build -t eo-fetch .
+docker run --rm eo-fetch providers
+docker run --rm -v "${PWD}/data:/data" eo-fetch download --provider dwd --product radolan-yw --limit 2 --dest /data/dwd
+```
+
+(`${PWD}` is PowerShell; use `$(pwd)` in bash.) The image contains no credentials. For providers with accounts, either pass the environment variables from the credentials table (`-e EARTHDATA_USERNAME -e EARTHDATA_PASSWORD`, ...) or mount the credential file read-only, for example `-v "$HOME/.cdsapirc:/home/eo/.cdsapirc:ro"`. `--build-arg EXTRAS=eumetsat,nasa` builds a smaller image with only some providers.
+
 ## Which files can be opened?
 
 `eo-fetch check-readers` downloads the smallest recent file of every product alias of every provider and tries to open it, and prints ok, no reader, fail or skip for each. In the last full run: all GOES-18/19 products, SEVIRI (L1.5, IODC, RSS, cloud mask, cloud top height), FCI level 1c and cloud mask, MTG precipitation and lightning, CM SAF products, DWD radar composites, ICON-EU, DWD satellite radiation and NOAA GFS GRIB opened. Not readable yet: BUFR (ASCAT, RAP), DWD station zips and radar `.tar` composites, NEXRAD, and ICON icosahedral grids open only as a flat list of values (they need DWD's grid files for coordinates). Unknown formats raise a clear "no reader" error that lists the supported formats.

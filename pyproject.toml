@@ -1,12 +1,39 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "eo-fetch"
-version = "0.1.0"
-description = "One search-and-download interface, with manifests, for Earth-observation and climate data providers."
+dynamic = ["version"]  # read from eo_fetch.__version__ (src/eo_fetch/__init__.py)
+description = "One search-and-download interface, with verified downloads and manifests, for Earth-observation and climate data providers."
+readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Umut Kirdemir" }]
+keywords = [
+    "earth observation",
+    "climate",
+    "satellite",
+    "download",
+    "meteorology",
+    "EUMETSAT",
+    "NASA",
+    "Copernicus",
+    "ERA5",
+    "CMIP",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: GIS",
+]
 dependencies = [
     "requests",
     "truststore",
@@ -28,10 +55,13 @@ ecmwf = ["ecmwf-opendata"]
 all = [
     "eo-fetch[eumetsat,nasa,stac,noaa,dwd,earthkit,marine,esgf,cds,ecmwf,readers,satellite]",
 ]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "ruff", "build", "twine"]
 
 [project.scripts]
 eo-fetch = "eo_fetch.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "eo_fetch.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

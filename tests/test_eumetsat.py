@@ -9,9 +9,9 @@ import pytest
 from eo_fetch.backends import get_backend
 from eo_fetch.backends.eumetsat import EumetsatBackend, bbox_to_wkt, kib_to_bytes
 from eo_fetch.cli import main
-from eo_fetch.download import download_items
+from eo_fetch.downloader import download_items
 from eo_fetch.models import Query
-from eo_fetch.providers import get_provider
+from eo_fetch.registry import get_provider
 
 
 class FakeProduct:

@@ -77,31 +77,65 @@ def item_from_info(provider: str, project: str, info: dict) -> Item | None:
     )
 
 
+def index_settings(indices: str) -> dict:
+    """intake-esgf configuration for an ``indices`` option.
+
+    ``"all"`` enables every known index (including the legacy Solr ones, which still hold
+    older projects such as CMIP5). Otherwise a comma list of index names; a leading ``-``
+    switches that index off, for example ``"esgf-data.dkrz.de,-discovery.east.esgf.io"``.
+    """
+    text = indices.strip()
+    if not text:
+        return {}
+    if text.lower() == "all":
+        return {"all_indices": True}
+    chosen = {}
+    for part in text.split(","):
+        name = part.strip()
+        if name:
+            chosen[name.lstrip("-")] = not name.startswith("-")
+    return {"indices": chosen}
+
+
 class EsgfBackend:
     """Search and download ESGF files through intake-esgf.
 
-    ``query.product`` is the project (CMIP6, CMIP7, CORDEX, ...; default: intake-esgf's
-    default). Every ``--param`` is an ESGF facet, for example ``variable_id=tas``,
-    ``experiment_id=historical``, ``source_id=CanESM5``, ``member_id=r1i1p1f1``,
-    ``table_id=Amon``, ``frequency=mon``; a comma separates alternatives. ``--start`` and
-    ``--end`` keep only files overlapping that period. ``--text`` is a free-text search.
-    Narrow the search: every matching dataset is asked for its files.
+    ``query.product`` is the project (CMIP6, CMIP7, CORDEX-CMIP6, CMIP5, ...; default:
+    intake-esgf's default). Every ``--param`` is an ESGF facet, for example
+    ``variable_id=tas``, ``experiment_id=historical``, ``source_id=CanESM5``,
+    ``member_id=r1i1p1f1``, ``table_id=Amon``, ``frequency=mon``; a comma separates
+    alternatives. ``--start`` and ``--end`` keep only files overlapping that period. ``--text``
+    is a free-text search. ``--param indices=...`` chooses the search indices (see
+    :func:`index_settings`; ``indices=all`` finds older projects). Narrow the search: every
+    matching dataset is asked for its files.
     """
 
     name = "esgf"
     max_connections = 4
     query_params: frozenset[str] = frozenset()
-    open_params = True  # any --param is an ESGF facet
+    open_params = True  # any --param is an ESGF facet, except the constructor's own
+    empty_result_hint = (
+        "Nothing found. Facet names and values must match the project (CMIP6: variable_id, "
+        "experiment_id, source_id, ...; CMIP5: variable, experiment, model, ensemble, ...). "
+        "Older projects such as CMIP5 are only in the legacy indices: add --param indices=all "
+        "(slower)."
+    )
 
-    def __init__(self) -> None:
+    def __init__(self, indices: str = "") -> None:
+        self.indices = indices
         self._catalog = None
         self._session = None
 
     def catalog(self):
         if self._catalog is None:
-            from intake_esgf import ESGFCatalog
+            import intake_esgf
 
-            self._catalog = ESGFCatalog()
+            settings = index_settings(self.indices)
+            if settings:  # the catalog keeps the indices it was built with
+                with intake_esgf.conf.set(**settings):
+                    self._catalog = intake_esgf.ESGFCatalog()
+            else:
+                self._catalog = intake_esgf.ESGFCatalog()
         return self._catalog
 
     def session(self):
@@ -132,7 +166,7 @@ class EsgfBackend:
         if query.product:
             facets["project"] = query.product
         for key, value in query.params.items():
-            if value:
+            if value and key != "indices":  # "indices" configures the backend, it is no facet
                 facets[key] = split_values(value)
         if not facets and not query.text:
             raise ValueError("Give at least one facet with --param (for example variable_id=tas)")

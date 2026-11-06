@@ -9,10 +9,10 @@ import pytest
 
 from eo_fetch.backends import get_backend
 from eo_fetch.cli import main, parse_params, parse_time
-from eo_fetch.download import download_items, matches
+from eo_fetch.downloader import download_items, matches
 from eo_fetch.manifest import build_manifest, verify_manifest, write_manifest
 from eo_fetch.models import Item, Query
-from eo_fetch.providers import get_provider
+from eo_fetch.registry import get_provider
 
 
 def make_files(root: Path, names: list[str]) -> None:

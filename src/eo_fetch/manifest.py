@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from eo_fetch import __version__
-from eo_fetch.download import Result, file_digest
+from eo_fetch.downloader import Result, file_digest
 from eo_fetch.models import Query
-from eo_fetch.providers import ProviderInfo
+from eo_fetch.registry import ProviderInfo
 
 
 def build_manifest(query: Query, provider: ProviderInfo, results: list[Result]) -> dict:

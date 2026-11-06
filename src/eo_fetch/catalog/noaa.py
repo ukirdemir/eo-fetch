@@ -1,6 +1,6 @@
 """Provider card: NOAA open data on AWS (anonymous S3 buckets)."""
 
-from eo_fetch.providers import ProviderInfo, register
+from eo_fetch.registry import ProviderInfo, register
 
 GOES_PRODUCTS = {
     "cmip-conus": "ABI-L2-CMIPC",

@@ -1,6 +1,6 @@
 """Provider cards: STAC catalogues (Planetary Computer, AWS Earth Search, Copernicus Data Space)."""
 
-from eo_fetch.providers import ProviderInfo, register
+from eo_fetch.registry import ProviderInfo, register
 
 NOTES = (
     "--product is a STAC collection id (list them with `eo-fetch collections --provider NAME`); "

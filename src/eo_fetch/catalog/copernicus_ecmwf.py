@@ -1,6 +1,6 @@
 """Provider cards: ECMWF Open Data and the Copernicus Climate Data Store (ERA5)."""
 
-from eo_fetch.providers import ProviderInfo, register
+from eo_fetch.registry import ProviderInfo, register
 
 register(
     ProviderInfo(
@@ -59,7 +59,7 @@ register(
     ProviderInfo(
         name="esgf",
         backend="esgf",
-        title="ESGF: CMIP6/CMIP7 and CORDEX climate-model output",
+        title="ESGF: CMIP climate-model output (CMIP5, CMIP6 tested), CORDEX, obs4MIPs",
         auth="none",
         licence=(
             "Each dataset carries its own licence (CMIP6 data are mostly CC BY 4.0); check the "
@@ -68,15 +68,32 @@ register(
         attribution="Cite the CMIP6/CMIP7 dataset DOIs and acknowledge the modelling groups",
         latency="published months to years after the model runs; nodes can be offline",
         notes=(
-            "--product is the project (CMIP6, CMIP7, CORDEX; default: intake-esgf's default, "
-            "currently CMIP7). Every --param is an ESGF facet, e.g. --param variable_id=tas "
-            "--param experiment_id=historical --param source_id=CanESM5 --param member_id=r1i1p1f1 "
-            "--param table_id=Amon; a comma separates alternatives. --start/--end keep files "
+            "--product is the project: cmip3, cmip5, cmip6, cmip7, cordex-cmip6, input4mips or "
+            "obs4mips (default: intake-esgf's default, currently CMIP7). CMIP6 and CMIP5 have "
+            "been tested (CMIP5 needs --param indices=all); the other projects work only as far "
+            "as the ESGF indices still serve them. "
+            "Every --param is an ESGF facet, and facet names differ by project, e.g. CMIP6: "
+            "--param variable_id=tas --param experiment_id=historical --param source_id=CanESM5 "
+            "--param member_id=r1i1p1f1 --param table_id=Amon; CMIP5: variable, experiment, "
+            "model, ensemble, time_frequency, cmor_table. A comma separates alternatives. "
+            "--param indices=all also searches the legacy indices, which still hold older "
+            "projects such as CMIP5 (slower); indices=-discovery.east.esgf.io,"
+            "-discovery.west.esgf.io switches the STAC indices off (no CMIP6 warning). "
+            "--start/--end keep files "
             "overlapping the period; --text is a free-text search; --bbox is not supported. "
             "Search is done by intake-esgf over several indices (the old Solr indices are being "
             "retired); the search asks every matching dataset for its files, so narrow the facets. "
             "Needs the intake-esgf package (extra: esgf)."
         ),
+        products={
+            "cmip3": "CMIP3",
+            "cmip5": "CMIP5",
+            "cmip6": "CMIP6",
+            "cmip7": "CMIP7",
+            "cordex-cmip6": "CORDEX-CMIP6",
+            "input4mips": "input4MIPs",
+            "obs4mips": "obs4MIPs",
+        },
         verified="2026-11-05",
     )
 )

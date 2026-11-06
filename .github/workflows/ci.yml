@@ -22,3 +22,8 @@ jobs:
           ruff format --check .
       - name: Test (offline tests only)
         run: pytest -m "not network and not account"
+      - name: Build and check the package
+        run: |
+          pip install build twine
+          python -m build
+          twine check dist/*

@@ -1,6 +1,6 @@
 """Provider card: Deutscher Wetterdienst (DWD) open data server."""
 
-from eo_fetch.providers import ProviderInfo, register
+from eo_fetch.registry import ProviderInfo, register
 
 register(
     ProviderInfo(

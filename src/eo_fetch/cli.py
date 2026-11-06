@@ -4,22 +4,17 @@ from __future__ import annotations
 
 import argparse
 import sys
+import warnings
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from pathlib import Path
 
 from eo_fetch import __version__
-from eo_fetch.backends import backend_factory, get_backend, param_names
-from eo_fetch.download import Result, download_items
+from eo_fetch.api import make_backend, parse_time, products
+from eo_fetch.discovery import suggest
+from eo_fetch.downloader import Result, download_items
 from eo_fetch.manifest import build_manifest, verify_manifest, write_manifest
 from eo_fetch.models import Item, Query
-from eo_fetch.providers import ProviderInfo, all_providers, get_provider
-
-
-def parse_time(text: str) -> datetime:
-    """Parse an ISO date or date-time; naive values are taken as UTC."""
-    value = datetime.fromisoformat(text)
-    return value if value.tzinfo else value.replace(tzinfo=UTC)
+from eo_fetch.registry import ProviderInfo, all_providers, get_provider
 
 
 def parse_params(pairs: Sequence[str]) -> dict[str, str]:
@@ -46,17 +41,10 @@ def add_query_options(parser: argparse.ArgumentParser) -> None:
 
 def build_backend(info: ProviderInfo, user_params: dict[str, str]):
     """Create the provider's backend, rejecting --param names it does not know."""
-    constructor, search = param_names(info.backend)
-    unknown = set(user_params) - constructor - search
-    if getattr(backend_factory(info.backend), "open_params", False):
-        unknown = set()  # every other --param is a search facet
-    if unknown:
-        accepted = ", ".join(sorted(constructor | search)) or "none"
-        raise SystemExit(
-            f"Unknown --param {', '.join(sorted(unknown))} for provider {info.name} "
-            f"(accepted: {accepted})"
-        )
-    return get_backend(info.backend, {**info.backend_params, **user_params})
+    try:
+        return make_backend(info, user_params)
+    except ValueError as error:
+        raise SystemExit(str(error)) from None
 
 
 def resolve(args: argparse.Namespace):
@@ -104,9 +92,65 @@ def cmd_providers(args: argparse.Namespace) -> int:
     return 0
 
 
+def product_hint(info: ProviderInfo, product: str, items: Sequence[Item]) -> None:
+    """When nothing was found, point to the product names the user can choose from."""
+    if items or not info.products:
+        return
+    if product in info.products or product in info.products.values():
+        return  # a known product that simply has nothing in this time range or area
+    close = suggest(info, product)
+    if close:
+        print(f"Did you mean: {', '.join(close)}?")
+    print(f"Product names: eo-fetch products --provider {info.name}")
+
+
+def cmd_products(args: argparse.Namespace) -> int:
+    def skipped(info: ProviderInfo, error: Exception) -> None:
+        print(
+            f"{info.name}: live search skipped ({type(error).__name__}: {error})", file=sys.stderr
+        )
+
+    found = products(
+        " ".join(args.words),
+        args.provider,
+        live=True if args.live else None,
+        on_error=skipped,
+    )
+    if not found:
+        print("No products match. Use fewer words, or add --live to search the live catalogues.")
+        return 0
+    total = len(found)
+    found = found[: args.limit] if args.limit else found
+    labels = [f"{match.provider}/{match.product}" for match in found]
+    width = min(max(len(label) for label in labels), 48)
+    marks = {"catalogue": "[catalogue]", "folder": "[folder]"}
+    for label, match in zip(labels, found, strict=True):
+        text = " ".join(part for part in (match.description, marks.get(match.source, "")) if part)
+        print(f"{label:{width}}  {text}".rstrip())
+    shown = f"{len(found)} of {total}" if len(found) < total else str(total)
+    print(f"{shown} products. Use: eo-fetch search --provider PROVIDER --product PRODUCT")
+    return 0
+
+
+def run_search(info: ProviderInfo, backend, query: Query, typed_product: str) -> list[Item]:
+    """Search; if it fails on a product name that looks mistyped, suggest the likely names."""
+    try:
+        return backend.search(query)
+    except Exception:
+        product_hint(info, typed_product, [])
+        raise
+
+
+def empty_hint(backend, items: Sequence[Item]) -> None:
+    """The backend's own advice for a search that found nothing."""
+    advice = getattr(backend, "empty_result_hint", "")
+    if advice and not items:
+        print(advice)
+
+
 def cmd_search(args: argparse.Namespace) -> int:
-    _, backend, query = resolve(args)
-    items = backend.search(query)
+    info, backend, query = resolve(args)
+    items = run_search(info, backend, query, args.product)
     for item in items:
         print(describe(item))
     unknown = sum(item.expected_size is None for item in items)
@@ -118,13 +162,18 @@ def cmd_search(args: argparse.Namespace) -> int:
         more = " ..." if len(folders) > 12 else ""
         print(f"No files here, but {len(folders)} subfolders: {shown}{more}")
         print("Give one with --param prefix=..., or look deeper with --param depth=2")
+    elif not items:
+        product_hint(info, args.product, items)
+        empty_hint(backend, items)
     return 0
 
 
 def cmd_download(args: argparse.Namespace) -> int:
     info, backend, query = resolve(args)
-    items = backend.search(query)
+    items = run_search(info, backend, query, args.product)
     print(f"{len(items)} items, {total_megabytes(items):.1f} MB")
+    product_hint(info, args.product, items)
+    empty_hint(backend, items)
     if args.dry_run or not items:
         return 0
 
@@ -156,6 +205,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     print(f"{info.name}: {info.title}")
     print(f"  access: {info.auth}; latency: {info.latency or 'not stated'}")
     print(f"  licence: {info.licence or 'not stated'}")
+    if info.products:
+        print(
+            f"  products: {len(info.products)} named; list them with "
+            f"`eo-fetch products --provider {info.name}`"
+        )
     check = getattr(backend, "doctor", None)
     if check is None:
         print("  no access diagnostics implemented for this backend yet")
@@ -286,6 +340,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("providers", help="list registered providers").set_defaults(run=cmd_providers)
 
+    find = sub.add_parser("products", help="find product names to use with --product")
+    find.add_argument("words", nargs="*", help="words the name or description must contain")
+    find.add_argument("--provider", help="only this provider (also searches its live catalogue)")
+    find.add_argument("--live", action="store_true", help="search the live catalogues of all")
+    find.add_argument("--limit", type=int, help="show at most this many")
+    find.set_defaults(run=cmd_products)
+
     search = sub.add_parser("search", help="list items matching a query")
     add_query_options(search)
     search.set_defaults(run=cmd_search)
@@ -371,8 +432,16 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def short_warning(message, category, filename, lineno, line=None) -> str:
+    """Warnings from libraries without the file path and source line (see --debug)."""
+    return f"warning: {message}\n"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    original_format = warnings.formatwarning
+    if not args.debug:
+        warnings.formatwarning = short_warning
     try:
         return args.run(args)
     except KeyError as error:
@@ -383,6 +452,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise
         print(f"error: {error}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:
+        print("interrupted", file=sys.stderr)
+        return 130
+    except Exception as error:
+        if args.debug:
+            raise
+        print(f"error: {type(error).__name__}: {error}", file=sys.stderr)
+        print("(run `eo-fetch --debug ...` for the full traceback)", file=sys.stderr)
+        return 1
+    finally:
+        warnings.formatwarning = original_format
 
 
 if __name__ == "__main__":

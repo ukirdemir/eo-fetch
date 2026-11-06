@@ -1,6 +1,6 @@
 """Provider card: NASA Earthdata (the whole Common Metadata Repository)."""
 
-from eo_fetch.providers import ProviderInfo, register
+from eo_fetch.registry import ProviderInfo, register
 
 register(
     ProviderInfo(

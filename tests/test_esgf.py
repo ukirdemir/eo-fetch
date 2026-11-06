@@ -5,6 +5,7 @@ import pytest
 
 from eo_fetch.backends.esgf import (
     EsgfBackend,
+    index_settings,
     item_from_info,
     normalise_checksum,
     split_values,
@@ -103,6 +104,45 @@ def test_search_builds_facets_and_sorts_items():
     assert call["project"] == "CMIP6"
     assert call["variable_id"] == ["tas", "pr"] and call["experiment_id"] == "historical"
     assert call["file_start"] == "1990-01-01 00:00:00"
+
+
+def test_index_settings():
+    assert index_settings("") == {}
+    assert index_settings(" ALL ") == {"all_indices": True}
+    assert index_settings("esgf-data.dkrz.de, -discovery.east.esgf.io") == {
+        "indices": {"esgf-data.dkrz.de": True, "discovery.east.esgf.io": False}
+    }
+
+
+def test_catalog_is_built_with_the_chosen_indices(monkeypatch):
+    import contextlib
+    import sys
+    import types
+
+    calls = []
+
+    class Conf:
+        def set(self, **settings):
+            calls.append(settings)
+            return contextlib.nullcontext()
+
+    fake = types.ModuleType("intake_esgf")
+    fake.conf = Conf()
+    fake.ESGFCatalog = lambda: "catalog"
+    monkeypatch.setitem(sys.modules, "intake_esgf", fake)
+    assert EsgfBackend(indices="all").catalog() == "catalog"
+    assert calls == [{"all_indices": True}]
+    calls.clear()
+    assert EsgfBackend().catalog() == "catalog"
+    assert calls == []
+
+
+def test_indices_option_is_not_sent_as_a_facet():
+    catalog = FakeCatalog([info("a.nc")])
+    backend = backend_with(catalog)
+    backend.search(Query(provider="esgf", params={"variable_id": "tas", "indices": "all"}))
+    assert "indices" not in catalog.searches[0] and catalog.searches[0]["variable_id"] == "tas"
+    assert "indices=all" in backend.empty_result_hint
 
 
 def test_search_returns_nothing_when_index_finds_nothing():

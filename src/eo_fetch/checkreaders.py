@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from eo_fetch.download import download_items
+from eo_fetch.downloader import download_items
 from eo_fetch.models import Query
-from eo_fetch.providers import ProviderInfo, all_providers
 from eo_fetch.readers import NoReaderError, detect_format, open_data, resolve, summarize
+from eo_fetch.registry import ProviderInfo, all_providers
 
 # Files that are documentation or indexes, never the data of a product.
 NOT_DATA = (".html", ".htm", ".txt", ".pdf", ".md", ".idx", ".log", ".bz2.log", ".sha256", ".md5")

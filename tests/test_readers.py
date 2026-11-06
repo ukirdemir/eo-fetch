@@ -231,7 +231,7 @@ def test_check_product_with_fake_backend(tmp_path):
 
     from eo_fetch import checkreaders
     from eo_fetch.models import Item
-    from eo_fetch.providers import ProviderInfo
+    from eo_fetch.registry import ProviderInfo
 
     source = tmp_path / "src.nc"
     xr.Dataset({"t": (("x",), [1.0, 2.0])}).to_netcdf(source)

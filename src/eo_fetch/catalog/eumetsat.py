@@ -1,6 +1,6 @@
 """Provider card: EUMETSAT Data Store."""
 
-from eo_fetch.providers import ProviderInfo, register
+from eo_fetch.registry import ProviderInfo, register
 
 register(
     ProviderInfo(

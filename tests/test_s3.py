@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 
 from eo_fetch.backends.s3 import S3Backend, goes_prefixes, goes_time, guess_time, split_product
-from eo_fetch.download import download_items
+from eo_fetch.downloader import download_items
 from eo_fetch.models import Query
-from eo_fetch.providers import get_provider
+from eo_fetch.registry import get_provider
 
 BUCKET = "noaa-goes19/ABI-L2-CMIPC"
 

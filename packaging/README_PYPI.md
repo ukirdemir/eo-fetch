@@ -28,10 +28,10 @@ Every provider below was tested on a real download; each provider card states th
 Python 3.12 or 3.13 (the earthkit packages have no wheels for 3.14 yet).
 
 ```
-pip install eo-fetch
+pip install eo-fetch-api
 ```
 
-One install includes every provider, the readers and the plots.
+One install includes every provider, the readers and the plots. The package is imported as `eo_fetch`: `import eo_fetch as eof`.
 
 ## Python API
 

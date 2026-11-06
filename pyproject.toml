@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "eo-fetch"
+name = "eo-fetch-api"  # PyPI name; "eo-fetch" is too similar to an existing project
 dynamic = ["version"]  # read from eo_fetch.__version__ (src/eo_fetch/__init__.py)
 description = "One search-and-download interface, with verified downloads and manifests, for Earth-observation and climate data providers."
 readme = "packaging/README_PYPI.md"  # the package page; README.md is the longer GitHub version

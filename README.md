@@ -21,19 +21,17 @@ Status: pre-1.0. Every provider below was tested on a real download; each provid
 - **A provider registry** with access type (none, account, licence), latency, licence, attribution and "last verified" date.
 - **Readers**: NetCDF, HDF5, Zarr, GRIB, GeoTIFF/JPEG 2000/ESRI ASCII, gzip/bzip2/zip containers, and dedicated readers for MSG SEVIRI (native and level-2 GRIB), MTG FCI level-1c, GOES ABI and DWD radar composites.
 - **Maps**: one style registry (`eo-fetch styles`) on top of earthkit-plots; projected data (radar, geostationary) is regridded to latitude/longitude first. NetCDF/Zarr conversion and an earthkit-data bridge.
-- Backends wrap existing libraries (`eumdac`, `earthaccess`, `pystac-client`, `herbie`, `wetterdienst`, `earthkit-data`, `copernicusmarine`, `intake-esgf`, `cdsapi`, `ecmwf-opendata`) as optional extras. eo-fetch does not replace them.
+- Backends wrap existing libraries (`eumdac`, `earthaccess`, `pystac-client`, `earthkit-data`, `copernicusmarine`, `intake-esgf`, `cdsapi`, `ecmwf-opendata`). eo-fetch does not replace them.
 
 ## Install
 
-Python 3.12 or newer (the earthkit packages have no wheels for 3.14 yet).
+Python 3.12 or 3.13 (the earthkit packages have no wheels for 3.14 yet).
 
 ```
-pip install eo-fetch                 # core: search, download, manifests
-pip install "eo-fetch[all]"          # every provider, readers and plots
-pip install "eo-fetch[nasa,readers]" # or pick extras: eumetsat, nasa, stac, noaa, dwd, cds, ecmwf, marine, esgf, readers, satellite, earthkit
+pip install eo-fetch
 ```
 
-From a clone of the repository (for development): `pip install -e ".[all,dev]"`. Check the setup:
+One install includes every provider, the readers and the plots. From a clone of the repository (for development): `pip install -e ".[dev]"`. Check the setup:
 
 ```
 pytest
@@ -234,8 +232,7 @@ docker run --rm eo-fetch providers
 docker run --rm -v "${PWD}/data:/data" eo-fetch download --provider dwd --product radolan-yw --limit 2 --dest /data/dwd
 ```
 
-(`${PWD}` is PowerShell; use `$(pwd)` in bash.) The image contains no credentials. For providers with accounts, either pass the environment variables from the table above (`-e EARTHDATA_USERNAME -e EARTHDATA_PASSWORD`, ...) or mount the credential file read-only, for example `-v "$HOME/.cdsapirc:/home/eo/.cdsapirc:ro"`. `--build-arg EXTRAS=eumetsat,nasa` builds a smaller image with only some providers.
-
+(`${PWD}` is PowerShell; use `$(pwd)` in bash.) The image contains no credentials. For providers with accounts, either pass the environment variables from the table above (`-e EARTHDATA_USERNAME -e EARTHDATA_PASSWORD`, ...) or mount the credential file read-only, for example `-v "$HOME/.cdsapirc:/home/eo/.cdsapirc:ro"`.
 ## Roadmap
 
 Version 2 providers: CHIRPS and other precipitation products, river flow, agriculture and land use, soil moisture. Optional: GRIB subsetting through `herbie`, a `wetterdienst` backend for DWD station data, readers for BUFR and DWD station zips.

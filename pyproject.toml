@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "eo-fetch"
 dynamic = ["version"]  # read from eo_fetch.__version__ (src/eo_fetch/__init__.py)
 description = "One search-and-download interface, with verified downloads and manifests, for Earth-observation and climate data providers."
-readme = "README.md"
-requires-python = ">=3.12"
+readme = "packaging/README_PYPI.md"  # the package page; README.md is the longer GitHub version
+requires-python = ">=3.12,<3.14"  # the earthkit packages have no wheels for 3.14 yet
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Umut Kirdemir" }]
@@ -34,27 +34,38 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Atmospheric Science",
     "Topic :: Scientific/Engineering :: GIS",
 ]
+# One install gives everything: all providers, readers and plots.
 dependencies = [
+    # core
     "requests",
     "truststore",
+    # providers
+    "eumdac",
+    "earthaccess",
+    "pystac-client",
+    "planetary-computer",
+    "s3fs",
+    "cdsapi",
+    "ecmwf-opendata",
+    "copernicusmarine",
+    "intake-esgf",
+    # readers, regridding and plots
+    "numpy",
+    "xarray",
+    "netcdf4",
+    "h5netcdf",
+    "h5py",
+    "zarr",
+    "rioxarray",
+    "pyproj",
+    "pyresample",
+    "satpy",
+    "eccodes",
+    "earthkit-data",
+    "earthkit-plots",
 ]
 
 [project.optional-dependencies]
-eumetsat = ["eumdac"]
-nasa = ["earthaccess"]
-stac = ["pystac-client", "planetary-computer", "s3fs"]
-noaa = ["herbie-data", "s3fs"]
-dwd = ["wetterdienst"]
-earthkit = ["earthkit-data", "earthkit-plots"]
-readers = ["numpy", "xarray", "netcdf4", "h5netcdf", "h5py", "zarr", "rioxarray", "pyproj", "pyresample"]
-satellite = ["eo-fetch[readers]", "satpy", "eccodes"]
-marine = ["copernicusmarine"]
-esgf = ["intake-esgf"]
-cds = ["cdsapi"]
-ecmwf = ["ecmwf-opendata"]
-all = [
-    "eo-fetch[eumetsat,nasa,stac,noaa,dwd,earthkit,marine,esgf,cds,ecmwf,readers,satellite]",
-]
 dev = ["pytest", "ruff", "build", "twine"]
 
 [project.scripts]

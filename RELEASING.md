@@ -10,7 +10,7 @@ PyPI never accepts the same version twice, and a published file cannot be replac
 
 ## Every release
 
-1. Update `CHANGELOG.md`, and `__version__` in `src/eo_fetch/__init__.py` (the only place; `pyproject.toml` reads it).
+1. Update `CHANGELOG.md`, and `__version__` in `src/eo_fetch/__init__.py` (the only place; `pyproject.toml` reads it). The package page on PyPI is built from `packaging/README_PYPI.md` (Python API only, short); `README.md` is the longer GitHub version. Keep both in step. A practice upload to TestPyPI uses a pre-release version such as `1.0.0rc1`, because a version or file name can never be uploaded twice, even after deleting it.
 2. Quality gate: `ruff check .`, `ruff format --check .`, `pytest -q`.
 3. Build (creates `dist/eo_fetch-X.Y.Z.tar.gz` and `dist/eo_fetch-X.Y.Z-py3-none-any.whl`): delete the old `dist` folder, then `python -m build`.
 4. Check the metadata: `twine check dist/*` (both files must say PASSED).

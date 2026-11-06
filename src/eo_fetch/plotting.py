@@ -151,9 +151,7 @@ def plot(
     try:
         import earthkit.plots as ekp
     except ImportError as error:
-        raise RuntimeError(
-            "Plotting needs earthkit-plots: pip install 'eo-fetch[earthkit]'"
-        ) from error
+        raise RuntimeError("Plotting needs earthkit-plots: pip install earthkit-plots") from error
     from eo_fetch.readers import open_data
 
     opened = isinstance(source, str | Path)

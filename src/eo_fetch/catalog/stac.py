@@ -20,7 +20,7 @@ register(
         ),
         attribution="Data via Microsoft Planetary Computer; credit the original data provider",
         latency="varies by collection",
-        notes=NOTES + "Needs the planetary-computer package (extra: stac).",
+        notes=NOTES + "Links are signed automatically with the planetary-computer package.",
         backend_params={
             "catalog_url": "https://planetarycomputer.microsoft.com/api/stac/v1",
             "sign": "planetary-computer",

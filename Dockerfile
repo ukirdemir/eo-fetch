@@ -9,9 +9,6 @@
 
 FROM python:3.12-slim
 
-# Build with --build-arg EXTRAS=eumetsat,nasa for a smaller image.
-ARG EXTRAS=all
-
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
     MPLBACKEND=Agg \
@@ -24,9 +21,10 @@ RUN apt-get update \
     && mkdir /data && chown eo /data
 
 WORKDIR /build
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml LICENSE ./
+COPY packaging ./packaging
 COPY src ./src
-RUN pip install ".[${EXTRAS}]"
+RUN pip install .
 
 USER eo
 WORKDIR /data

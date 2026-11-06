@@ -20,7 +20,7 @@ register(
             "chooses parameters (default 2t), --param steps=0,6,12 or 0-48-6 the lead times in "
             "hours, --param cycles=00,12 the forecast hours. Without --start/--end the latest "
             "cycle is used. --param source=aws switches to the AWS mirror if the ECMWF portal "
-            "is busy. Needs the ecmwf-opendata package (extra: ecmwf)."
+            "is busy."
         ),
         backend_params={"source": "ecmwf"},
         products={"ifs-hres": "oper", "ifs-ensemble": "enfo"},
@@ -82,8 +82,7 @@ register(
             "--start/--end keep files "
             "overlapping the period; --text is a free-text search; --bbox is not supported. "
             "Search is done by intake-esgf over several indices (the old Solr indices are being "
-            "retired); the search asks every matching dataset for its files, so narrow the facets. "
-            "Needs the intake-esgf package (extra: esgf)."
+            "retired); the search asks every matching dataset for its files, so narrow the facets."
         ),
         products={
             "cmip3": "CMIP3",

@@ -67,9 +67,7 @@ def open_grib(path: Path, **options):
     try:
         import earthkit.data as ekd
     except ImportError as error:
-        raise RuntimeError(
-            "Reading GRIB needs earthkit-data: pip install 'eo-fetch[earthkit]'"
-        ) from error
+        raise RuntimeError("Reading GRIB needs earthkit-data: pip install earthkit-data") from error
     return ekd.from_source("file", str(path)).to_xarray(**options)
 
 

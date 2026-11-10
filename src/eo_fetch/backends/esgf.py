@@ -10,6 +10,7 @@ and checksum.
 from __future__ import annotations
 
 import contextlib
+import copy
 import re
 import warnings
 from datetime import UTC, datetime
@@ -164,13 +165,20 @@ class EsgfBackend:
                 raise ValueError(
                     f"Unknown ESGF index {', '.join(unknown)}. Known: {', '.join(sorted(known))}"
                 )
-            # all_indices is applied after the per-index flags, so it needs a step of its own
-            with index_notes(self._dead), contextlib.ExitStack() as stack:
-                if settings.get("all_indices"):
-                    stack.enter_context(intake_esgf.conf.set(all_indices=True))
-                if settings.get("indices"):
-                    stack.enter_context(intake_esgf.conf.set(indices=settings["indices"]))
-                self._catalog = intake_esgf.ESGFCatalog()
+            conf = intake_esgf.conf
+            saved = copy.deepcopy(dict(conf)) if settings else None
+            try:
+                # all_indices is applied after the per-index flags, so it needs a step of its own
+                with index_notes(self._dead), contextlib.ExitStack() as stack:
+                    if settings.get("all_indices"):
+                        stack.enter_context(conf.set(all_indices=True))
+                    if settings.get("indices"):
+                        stack.enter_context(conf.set(indices=settings["indices"]))
+                    self._catalog = intake_esgf.ESGFCatalog()
+            finally:
+                if saved is not None:  # intake-esgf does not undo its changes after an error
+                    conf.clear()
+                    conf.update(saved)
         return self._catalog
 
     def report_dead_indices(self) -> None:

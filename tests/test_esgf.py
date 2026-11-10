@@ -126,7 +126,7 @@ def test_catalog_is_built_with_the_chosen_indices(monkeypatch):
 
     calls = []
 
-    class Conf:
+    class Conf(dict):
         def set(self, **settings):
             calls.append(settings)
             return contextlib.nullcontext()
@@ -169,6 +169,29 @@ def test_unknown_index_name_is_rejected(monkeypatch):
 
 DEAD = "SolrESGFIndex('esgf-node.ipsl.upmc.fr') failed to return a response, x"
 SOLR = "You have enabled at least one index which uses the old Solr technology."
+
+
+def test_configuration_is_restored_when_the_catalog_cannot_be_built(monkeypatch):
+    import contextlib
+    import sys
+    import types
+
+    class Conf(dict):
+        def set(self, **settings):
+            self["state"] = "changed"
+            return contextlib.nullcontext()  # like intake-esgf after an error: no undo
+
+    def broken():
+        raise RuntimeError("no network")
+
+    conf = Conf(state="original")
+    fake = types.ModuleType("intake_esgf")
+    fake.conf = conf
+    fake.ESGFCatalog = broken
+    monkeypatch.setitem(sys.modules, "intake_esgf", fake)
+    with pytest.raises(RuntimeError, match="no network"):
+        EsgfBackend(indices="all").catalog()
+    assert conf == {"state": "original"}
 
 
 class NoisyCatalog(FakeCatalog):

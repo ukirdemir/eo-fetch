@@ -6,7 +6,7 @@ All notable changes to eo-fetch. The format follows [Keep a Changelog](https://k
 
 ### Changed
 
-- ESGF: `indices` accepts `all` together with excluded indices, for example `all,-esgf-node.ipsl.upmc.fr`; an unknown index name is an error that lists the known ones.
+- ESGF: `indices` accepts `all` together with excluded indices, for example `all,-esgf-node.ipsl.upmc.fr`; an unknown index name is an error that lists the known ones. The `intake-esgf` configuration is restored even when building the catalog fails (for example without network).
 - ESGF: indices that do not answer are reported in one short note instead of one warning per call, and the long Solr notice of `intake-esgf` is dropped; other warnings pass through unchanged.
 
 ## 1.0.0 - 2026-11-06

@@ -9,7 +9,9 @@ and checksum.
 
 from __future__ import annotations
 
+import contextlib
 import re
+import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,6 +19,9 @@ from eo_fetch import __version__
 from eo_fetch.models import Item, Query
 
 USER_AGENT = f"eo-fetch/{__version__}"
+INDEX_NAME = re.compile(r"\w*ESGFIndex\('([^']+)'")
+NO_ANSWER = "failed to return a response"
+SOLR_NOTICE = "old Solr technology"
 DIGEST_LENGTHS = {"md5": 32, "sha1": 40, "sha256": 64, "sha512": 128}
 MULTIHASH_SHA256 = "1220"  # prefix of a hex multihash holding a SHA-256 digest
 
@@ -78,23 +83,44 @@ def item_from_info(provider: str, project: str, info: dict) -> Item | None:
 
 
 def index_settings(indices: str) -> dict:
-    """intake-esgf configuration for an ``indices`` option.
-
-    ``"all"`` enables every known index (including the legacy Solr ones, which still hold
-    older projects such as CMIP5). Otherwise a comma list of index names; a leading ``-``
-    switches that index off, for example ``"esgf-data.dkrz.de,-discovery.east.esgf.io"``.
-    """
-    text = indices.strip()
-    if not text:
-        return {}
-    if text.lower() == "all":
-        return {"all_indices": True}
+    """intake-esgf configuration for an ``indices`` option (see the user manual)."""
+    settings: dict = {}
     chosen = {}
-    for part in text.split(","):
+    for part in indices.split(","):
         name = part.strip()
-        if name:
+        if name.lower() == "all":
+            settings["all_indices"] = True
+        elif name:
             chosen[name.lstrip("-")] = not name.startswith("-")
-    return {"indices": chosen}
+    if chosen:
+        settings["indices"] = chosen
+    return settings
+
+
+def known_indices(conf) -> set[str]:
+    """Names of every index intake-esgf knows (empty if its configuration cannot be read)."""
+    try:
+        return {name for kind in ("stac", "globus", "solr") for name in conf[f"{kind}_indices"]}
+    except (KeyError, TypeError):
+        return set()
+
+
+@contextlib.contextmanager
+def index_notes(dead: set[str]):
+    """Collect intake-esgf's per-index warnings: remember silent indices, pass others on."""
+    caught: list = []
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            yield
+    finally:
+        for entry in caught:
+            text = str(entry.message)
+            found = INDEX_NAME.search(text)
+            if NO_ANSWER in text and found:
+                dead.add(found.group(1))
+            elif SOLR_NOTICE not in text:
+                warnings.warn_explicit(entry.message, entry.category, entry.filename, entry.lineno)
 
 
 class EsgfBackend:
@@ -125,18 +151,40 @@ class EsgfBackend:
         self.indices = indices
         self._catalog = None
         self._session = None
+        self._dead: set[str] = set()
 
     def catalog(self):
         if self._catalog is None:
             import intake_esgf
 
             settings = index_settings(self.indices)
-            if settings:  # the catalog keeps the indices it was built with
-                with intake_esgf.conf.set(**settings):
-                    self._catalog = intake_esgf.ESGFCatalog()
-            else:
+            known = known_indices(intake_esgf.conf)
+            unknown = sorted(set(settings.get("indices", {})) - known) if known else []
+            if unknown:
+                raise ValueError(
+                    f"Unknown ESGF index {', '.join(unknown)}. Known: {', '.join(sorted(known))}"
+                )
+            # all_indices is applied after the per-index flags, so it needs a step of its own
+            with index_notes(self._dead), contextlib.ExitStack() as stack:
+                if settings.get("all_indices"):
+                    stack.enter_context(intake_esgf.conf.set(all_indices=True))
+                if settings.get("indices"):
+                    stack.enter_context(intake_esgf.conf.set(indices=settings["indices"]))
                 self._catalog = intake_esgf.ESGFCatalog()
         return self._catalog
+
+    def report_dead_indices(self) -> None:
+        """One short note for the indices that did not answer (instead of one warning each)."""
+        if not self._dead:
+            return
+        names, self._dead = sorted(self._dead), set()
+        skip = ",".join(filter(None, [self.indices.strip(), *(f"-{name}" for name in names)]))
+        warnings.warn(
+            f"ESGF: no answer from {', '.join(names)}; results may be incomplete. "
+            f'To skip it: --param "indices={skip}"',
+            UserWarning,
+            stacklevel=2,
+        )
 
     def session(self):
         """A requests session using the system certificates."""
@@ -157,6 +205,12 @@ class EsgfBackend:
         return self._session
 
     def search(self, query: Query) -> list[Item]:
+        try:
+            return self._search(query)
+        finally:
+            self.report_dead_indices()
+
+    def _search(self, query: Query) -> list[Item]:
         if query.bbox:
             raise ValueError(
                 "ESGF files are global model output: --bbox is not supported here; "
@@ -177,13 +231,15 @@ class EsgfBackend:
         if query.end:
             extra["file_end"] = query.end.strftime("%Y-%m-%d %H:%M:%S")
         try:
-            catalog.search(query=query.text, quiet=True, **extra, **facets)
+            with index_notes(self._dead):
+                catalog.search(query=query.text, quiet=True, **extra, **facets)
         except Exception as error:
             if type(error).__name__ == "NoSearchResults":
                 return []
             raise
         try:
-            infos = catalog._get_file_info(quiet=True)
+            with index_notes(self._dead):
+                infos = catalog._get_file_info(quiet=True)
         except AttributeError as error:
             raise RuntimeError(
                 "This version of intake-esgf has no file listing eo-fetch can use; "

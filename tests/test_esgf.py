@@ -1,3 +1,4 @@
+import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -112,6 +113,10 @@ def test_index_settings():
     assert index_settings("esgf-data.dkrz.de, -discovery.east.esgf.io") == {
         "indices": {"esgf-data.dkrz.de": True, "discovery.east.esgf.io": False}
     }
+    assert index_settings("all,-esgf-node.ipsl.upmc.fr") == {
+        "all_indices": True,
+        "indices": {"esgf-node.ipsl.upmc.fr": False},
+    }
 
 
 def test_catalog_is_built_with_the_chosen_indices(monkeypatch):
@@ -133,8 +138,65 @@ def test_catalog_is_built_with_the_chosen_indices(monkeypatch):
     assert EsgfBackend(indices="all").catalog() == "catalog"
     assert calls == [{"all_indices": True}]
     calls.clear()
+    assert EsgfBackend(indices="all,-esgf-node.ipsl.upmc.fr").catalog() == "catalog"
+    assert calls == [{"all_indices": True}, {"indices": {"esgf-node.ipsl.upmc.fr": False}}]
+    calls.clear()
     assert EsgfBackend().catalog() == "catalog"
     assert calls == []
+
+
+def test_unknown_index_name_is_rejected(monkeypatch):
+    import contextlib
+    import sys
+    import types
+
+    class Conf(dict):
+        def set(self, **settings):
+            return contextlib.nullcontext()
+
+    fake = types.ModuleType("intake_esgf")
+    fake.conf = Conf(
+        stac_indices={"discovery.east.esgf.io": True},
+        globus_indices={"ESGF2-US-1.5-Catalog": True},
+        solr_indices={"esgf-data.dkrz.de": False},
+    )
+    fake.ESGFCatalog = lambda: "catalog"
+    monkeypatch.setitem(sys.modules, "intake_esgf", fake)
+    with pytest.raises(ValueError, match=r"esgf-data\.dkrz\.dee"):
+        EsgfBackend(indices="all,-esgf-data.dkrz.dee").catalog()
+    assert EsgfBackend(indices="all,-esgf-data.dkrz.de").catalog() == "catalog"
+
+
+DEAD = "SolrESGFIndex('esgf-node.ipsl.upmc.fr') failed to return a response, x"
+SOLR = "You have enabled at least one index which uses the old Solr technology."
+
+
+class NoisyCatalog(FakeCatalog):
+    """Warns the way intake-esgf does when an index is dead."""
+
+    def search(self, **kwargs):
+        warnings.warn(DEAD, stacklevel=2)
+        warnings.warn(SOLR, stacklevel=2)
+        return super().search(**kwargs)
+
+    def _get_file_info(self, quiet=False):
+        warnings.warn(DEAD, stacklevel=2)
+        warnings.warn("something else", stacklevel=2)
+        return self.infos
+
+
+def test_silent_indices_give_one_short_note_and_other_warnings_pass():
+    backend = EsgfBackend(indices="all")
+    backend._catalog = NoisyCatalog([info("a.nc")])
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        items = backend.search(Query(provider="esgf", params={"variable_id": "tas"}))
+    texts = [str(entry.message) for entry in caught]
+    assert [i.key for i in items] == ["a.nc"]
+    assert "something else" in texts
+    notes = [text for text in texts if text.startswith("ESGF: no answer")]
+    assert len(notes) == 1 and '"indices=all,-esgf-node.ipsl.upmc.fr"' in notes[0]
+    assert len(texts) == 2  # the note and the unrelated warning only
 
 
 def test_indices_option_is_not_sent_as_a_facet():

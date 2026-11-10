@@ -2,6 +2,13 @@
 
 All notable changes to eo-fetch. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+### Changed
+
+- ESGF: `indices` accepts `all` together with excluded indices, for example `all,-esgf-node.ipsl.upmc.fr`; an unknown index name is an error that lists the known ones.
+- ESGF: indices that do not answer are reported in one short note instead of one warning per call, and the long Solr notice of `intake-esgf` is dropped; other warnings pass through unchanged.
+
 ## 1.0.0 - 2026-11-06
 
 First public release.

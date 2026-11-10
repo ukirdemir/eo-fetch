@@ -176,5 +176,5 @@ Known limits:
 - ICON icosahedral grids open only as a flat list of values (they need DWD's grid files for coordinates).
 - OMI and SMAP HDF5 files open but are not plotted (2-D latitude/longitude arrays).
 - Plots draw the first entry of extra dimensions (time, level, band). Categorical rasters such as Sentinel-2 `SCL` have no dedicated style yet.
-- CMIP6 searches may warn about a publishing error in the new STAC indices of ESGF; the warning is from `intake-esgf`. Switch those indices off with `indices="-discovery.east.esgf.io,-discovery.west.esgf.io"` in `eof.search`. Older projects (CMIP5, CMIP3) are only in the legacy indices: add `indices="all"`; some legacy nodes may be offline and are reported as warnings.
+- CMIP6 searches may warn about a publishing error in the new STAC indices of ESGF; the warning is from `intake-esgf`. Switch those indices off with `indices="-discovery.east.esgf.io,-discovery.west.esgf.io"` in `eof.search`. Older projects (CMIP5, CMIP3) are only in the legacy indices: add `indices="all"`. Legacy nodes that are offline are reported in one short note; skip one with a leading minus, for example `indices="all,-esgf-node.ipsl.upmc.fr"`.
 - On Windows, paths are limited to 260 characters; use a short destination folder. A harmless `Error in sys.excepthook` message can appear at exit after reading GeoTIFF/JPEG 2000 files.
